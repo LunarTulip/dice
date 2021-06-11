@@ -1,0 +1,22 @@
+number = { decimal | integer }
+    integer = _{ ASCII_DIGIT+ }
+    decimal = _{ integer ~ "." ~ integer }
+binop = { dice | plus_binop | minus_binop | times | divide | modulus }
+    dice = { "d" }
+    plus_binop = { "+" }
+    minus_binop = { "-" }
+    times = { "*" }
+    divide = { "/" }
+    modulus = { "%" }
+unop = { plus_unop | minus_unop }
+    plus_unop = { "+" }
+    minus_unop = { "-" }
+WHITESPACE = _{ " " }
+
+paren_block = { "(" ~ legitimate_sequence ~ (binop ~ legitimate_sequence)* ~ ")" }
+non_operator = { number | paren_block }
+paired_unop = { unop ~ non_operator }
+non_binop = { number | paren_block | paired_unop }
+
+legitimate_sequence = { non_binop ~ (binop ~ non_binop)* }
+full_expression = { SOI ~ legitimate_sequence ~ EOI }
