@@ -250,7 +250,6 @@ fn clean_input(input: &str) -> String {
     clean
 }
 
-// Assumes pre-cleaned input; improve by adding internal cleaning
 pub fn parse_input(input: &str) -> (Decimal, String, Vec<String>, Vec<Vec<Decimal>>) {
     let cleaned = clean_input(input);
     let full_expression = DiceParser::parse(Rule::full_expression, &cleaned)
