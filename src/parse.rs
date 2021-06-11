@@ -243,9 +243,17 @@ fn parse_full_expression(mut tree: Pairs<Rule>) -> (Decimal, String, Vec<String>
     parse_legitimate_sequence(sequence)
 }
 
+fn clean_input(input: &str) -> String {
+    let mut clean = String::from(input);
+    clean.retain(|c| "0123456789d+-*/%() ".contains(c));
+
+    clean
+}
+
 // Assumes pre-cleaned input; improve by adding internal cleaning
 pub fn parse_input(input: &str) -> (Decimal, String, Vec<String>, Vec<Vec<Decimal>>) {
-    let tree = DiceParser::parse(Rule::full_expression, &input)
-        .expect("Failed to parse input.");
-    parse_full_expression(tree)
+    let cleaned = clean_input(input);
+    let full_expression = DiceParser::parse(Rule::full_expression, &cleaned)
+        .expect("Ill-formed input");
+    parse_full_expression(full_expression)
 }
