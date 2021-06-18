@@ -37,8 +37,8 @@ fn main() {
         match parse_input(&roll) {
             Ok(results) => {
                 println!("{:?}", results);
-                println!("{}", format_string_with_rolls(&results.1, results.2));
-                println!("{}", format_string_with_results(&results.1, results.3));
+                println!("{}", format_string_with_rolls(&results.processed_string, results.original_roll_texts));
+                println!("{}", format_string_with_results(&results.processed_string, results.rolls));
             }
             Err(e) => println!("{}", e),
         }
