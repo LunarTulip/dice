@@ -11,5 +11,6 @@ TODOs:
 - Improve whitespace handling so as to avoid the current lossiness
 - Add options for variable display verbosity, so as to be more easily pipable
 - Improve format functions in `dice.rs`
-- Figure out an elegant way to handle verbose display of nested dice rolls. (e.g. 2d3d4. Rendering as (2, 1)d4 loses something; so does rendering as (4, 2, 4).)
+- Figure out an elegant way to handle verbose display of nested dice rolls. (See, for example `2d3d4` Rendering as [2, 1]d4 loses something; so does rendering as [4, 2, 4].)
+- Maybe find a way to make the binop-sequence-handling code less repetitive?
 - Implement GUI

@@ -4,9 +4,6 @@ use pest_derive::Parser;
 use rand::Rng;
 use rust_decimal::prelude::*;
 
-// TODO: figure out how to elegantly handle nested dice rolls
-// (e.g. 2d3d4. Rendering as (2, 1)d4 loses something; so does rendering as (4, 2, 4). Solve by having a default view and then offering an option to display all individual roll results, probably.)
-
 #[derive(Clone)]
 enum Binop {
     Dice,
