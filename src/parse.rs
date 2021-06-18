@@ -30,13 +30,17 @@ fn roll_die(sides: i128) -> Decimal {
     Decimal::from(roll)
 }
 
-fn roll_dice(number: Decimal, sides: Decimal) -> (Decimal, Vec<Decimal>) {
-    assert_eq!(number, number.floor(), "Attempted to roll non-integer number of dice.");
-    assert_eq!(sides, sides.floor(), "Attempted to roll dice with non-integer number of sides.");
-    assert!(!number.is_sign_negative(), "Attempted to roll negative number of dice.");
-    assert!(sides.is_sign_positive(), "Attempted to roll dice with non-positive number of sides.");
-    if number.is_zero() {
-        return (Decimal::from(0), Vec::new())
+fn roll_dice(number: Decimal, sides: Decimal) -> Result<(Decimal, Vec<Decimal>), String> {
+    if number != number.floor() {
+        return Err(String::from("Attempted to roll non-integer number of dice."));
+    } else if sides != sides.floor() {
+        return Err(String::from("Attempted to roll dice with non-integer number of sides."));
+    } else if number.is_sign_negative() {
+        return Err(String::from("Attempted to roll negative number of dice."));
+    } else if !sides.is_sign_positive() {
+        return Err(String::from("Attempted to roll dice with non-positive number of sides."));
+    } else if number.is_zero() {
+        return Ok((Decimal::from(0), Vec::new()));
     }
 
     let number_as_int = number.abs().mantissa();
@@ -50,7 +54,7 @@ fn roll_dice(number: Decimal, sides: Decimal) -> (Decimal, Vec<Decimal>) {
         rolls.push(roll);
     }
 
-    (sum, rolls)
+    Ok((sum, rolls))
 }
 
 fn parse_number(number: Pair<Rule>) -> (Decimal, String) {
@@ -90,20 +94,20 @@ fn parse_unop(unop: Pair<Rule>) -> Unop {
     }
 }
 
-fn parse_paren_block(paren_block: Pair<Rule>) -> (Decimal, String, Vec<String>, Vec<Vec<Decimal>>) {
+fn parse_paren_block(paren_block: Pair<Rule>) -> Result<(Decimal, String, Vec<String>, Vec<Vec<Decimal>>), String> {
     assert_eq!(paren_block.as_rule(), Rule::paren_block, "Called parse_paren_block on non-paren-block.");
 
     let mut inside = paren_block.into_inner();
-    let (mut result, mut processed_string, mut original_rolls, mut roll_vals) = parse_legitimate_sequence(inside.next().unwrap());
+    let (mut result, mut processed_string, mut original_rolls, mut roll_vals) = parse_legitimate_sequence(inside.next().unwrap())?;
 
     let mut next = inside.next();
     while next != None {
         let binop = parse_binop(next.unwrap());
-        let (next_result, next_str_segment, mut next_rolls, mut next_roll_vals) = parse_legitimate_sequence(inside.next().unwrap());
+        let (next_result, next_str_segment, mut next_rolls, mut next_roll_vals) = parse_legitimate_sequence(inside.next().unwrap())?;
 
         match binop {
             Binop::Dice => {
-                let (new_result, rolls) = roll_dice(result, next_result);
+                let (new_result, rolls) = roll_dice(result, next_result)?;
                 result = new_result;
                 processed_string = format!("{}d{}", processed_string, next_str_segment);
                 original_rolls.push(processed_string.clone());
@@ -137,10 +141,10 @@ fn parse_paren_block(paren_block: Pair<Rule>) -> (Decimal, String, Vec<String>, 
         next = inside.next();
     }
 
-    (result, format!("({})", processed_string), original_rolls, roll_vals)
+    Ok((result, format!("({})", processed_string), original_rolls, roll_vals))
 }
 
-fn parse_non_operator(non_operator: Pair<Rule>) -> (Decimal, String, Vec<String>, Vec<Vec<Decimal>>) {
+fn parse_non_operator(non_operator: Pair<Rule>) -> Result<(Decimal, String, Vec<String>, Vec<Vec<Decimal>>), String> {
     assert_eq!(non_operator.as_rule(), Rule::non_operator, "Called parse_non_operator on non-paren-block.");
 
     let inside = non_operator.into_inner().next().unwrap();
@@ -148,28 +152,28 @@ fn parse_non_operator(non_operator: Pair<Rule>) -> (Decimal, String, Vec<String>
     match inside.as_rule() {
         Rule::number => {
             let (number, string) = parse_number(inside);
-            (number, string, Vec::new(), Vec::new())
+            Ok((number, string, Vec::new(), Vec::new()))
         }
         Rule::paren_block => parse_paren_block(inside),
         _ => panic!("Non-operator token inside isn't a number or paren block.")
     }
 }
 
-fn parse_paired_unop(paired_unop: Pair<Rule>) -> (Decimal, String, Vec<String>, Vec<Vec<Decimal>>) {
+fn parse_paired_unop(paired_unop: Pair<Rule>) -> Result<(Decimal, String, Vec<String>, Vec<Vec<Decimal>>), String> {
     assert_eq!(paired_unop.as_rule(), Rule::paired_unop, "Called parse_paired_unop on non-paired-unop.");
 
     let mut inside = paired_unop.into_inner();
 
     let unop = inside.next().unwrap();
-    let (result, string, original_rolls, roll_vals) = parse_non_operator(inside.next().unwrap());
+    let (result, string, original_rolls, roll_vals) = parse_non_operator(inside.next().unwrap())?;
 
     match parse_unop(unop) {
-        Unop::Plus => (result, format!("+{}", string), original_rolls, roll_vals),
-        Unop::Minus => (result * Decimal::from(-1), format!("-{}", string), original_rolls, roll_vals),
+        Unop::Plus => Ok((result, format!("+{}", string), original_rolls, roll_vals)),
+        Unop::Minus => Ok((result * Decimal::from(-1), format!("-{}", string), original_rolls, roll_vals)),
     }
 }
 
-fn parse_non_binop(non_binop: Pair<Rule>) -> (Decimal, String, Vec<String>, Vec<Vec<Decimal>>) {
+fn parse_non_binop(non_binop: Pair<Rule>) -> Result<(Decimal, String, Vec<String>, Vec<Vec<Decimal>>), String> {
     assert_eq!(non_binop.as_rule(), Rule::non_binop, "Called parse_non_binop on non-non-binop.");
 
     let inside = non_binop.into_inner().next().unwrap();
@@ -177,7 +181,7 @@ fn parse_non_binop(non_binop: Pair<Rule>) -> (Decimal, String, Vec<String>, Vec<
     match inside.as_rule() {
         Rule::number => {
             let (number, string) = parse_number(inside);
-            (number, string, Vec::new(), Vec::new())
+            Ok((number, string, Vec::new(), Vec::new()))
         }
         Rule::paren_block => parse_paren_block(inside),
         Rule::paired_unop => parse_paired_unop(inside),
@@ -185,20 +189,20 @@ fn parse_non_binop(non_binop: Pair<Rule>) -> (Decimal, String, Vec<String>, Vec<
     }
 }
 
-fn parse_legitimate_sequence(sequence: Pair<Rule>) -> (Decimal, String, Vec<String>, Vec<Vec<Decimal>>) {
+fn parse_legitimate_sequence(sequence: Pair<Rule>) -> Result<(Decimal, String, Vec<String>, Vec<Vec<Decimal>>), String> {
     assert_eq!(sequence.as_rule(), Rule::legitimate_sequence, "Called parse_legitimate_sequence on non-legitimate-sequence.");
 
     let mut inside = sequence.into_inner();
-    let (mut result, mut processed_string, mut original_rolls, mut roll_vals) = parse_non_binop(inside.next().unwrap());
+    let (mut result, mut processed_string, mut original_rolls, mut roll_vals) = parse_non_binop(inside.next().unwrap())?;
 
     let mut next = inside.next();
     while next != None {
         let binop = parse_binop(next.unwrap());
-        let (next_result, next_str_segment, mut next_rolls, mut next_roll_vals) = parse_non_binop(inside.next().unwrap());
+        let (next_result, next_str_segment, mut next_rolls, mut next_roll_vals) = parse_non_binop(inside.next().unwrap())?;
 
         match binop {
             Binop::Dice => {
-                let (new_result, rolls) = roll_dice(result, next_result);
+                let (new_result, rolls) = roll_dice(result, next_result)?;
                 result = new_result;
                 original_rolls.push(format!("{}d{}", processed_string, next_str_segment));
                 processed_string = String::from("{}");
@@ -232,11 +236,10 @@ fn parse_legitimate_sequence(sequence: Pair<Rule>) -> (Decimal, String, Vec<Stri
         next = inside.next();
     }
 
-    (result, processed_string, original_rolls, roll_vals)
+    Ok((result, processed_string, original_rolls, roll_vals))
 }
 
-// Output format: result (as decimal), processed string (with placeholders where rolls were), vec of original roll texts, vec of rolls
-fn parse_full_expression(mut tree: Pairs<Rule>) -> (Decimal, String, Vec<String>, Vec<Vec<Decimal>>) {
+fn parse_full_expression(mut tree: Pairs<Rule>) -> Result<(Decimal, String, Vec<String>, Vec<Vec<Decimal>>), String> {
     let full_expression = tree.next().unwrap();
     let sequence = full_expression.into_inner().next().unwrap();
     
@@ -250,9 +253,11 @@ fn clean_input(input: &str) -> String {
     clean
 }
 
-pub fn parse_input(input: &str) -> (Decimal, String, Vec<String>, Vec<Vec<Decimal>>) {
+// Output format: result (as decimal), processed string (with placeholders where rolls were), vec of original roll texts, vec of rolls
+pub fn parse_input(input: &str) -> Result<(Decimal, String, Vec<String>, Vec<Vec<Decimal>>), String> {
     let cleaned = clean_input(input);
-    let full_expression = DiceParser::parse(Rule::full_expression, &cleaned)
-        .expect("Ill-formed input");
-    parse_full_expression(full_expression)
+    match DiceParser::parse(Rule::full_expression, &cleaned) {
+        Ok(full_expression) => Ok(parse_full_expression(full_expression)?),
+        Err(e) => Err(e.to_string()),
+    }
 }
