@@ -1,7 +1,7 @@
 [package]
 name = "dice"
 version = "0.2.1"
-authors = ["Alyssa Riceman <altoftulip@gmail.com>"]
+authors = ["Alyssa Riceman <alyssariceman@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
