@@ -5,8 +5,11 @@ use rust_decimal::prelude::*;
 /// Roll dice via string input.
 #[derive(FromArgs)]
 struct Args {
+    /// display full roll output
+    #[argh(switch, short = 'v')]
+    verbose: bool,
     #[argh(positional)]
-    roll: Option<String>,
+    roll: Vec<String>,
 }
 
 // This function is almost certainly horribly inefficient, with all the strings it allocates. Improvements wanted.
@@ -33,16 +36,20 @@ fn format_string_with_results(string: &str, result_vecs: Vec<Vec<Decimal>>) -> S
 fn main() {
     let args: Args = argh::from_env();
 
-    if let Some(roll) = args.roll {
-        match parse_input(&roll) {
+    if args.roll.is_empty() {
+        println!("Attempted to invoke dice roller CLI with no roll argument. In the future this may (or may not) launch the GUI, but right now you're just getting this error message.");
+    } else {
+        match parse_input(&args.roll.join(" ")) {
             Ok(results) => {
-                println!("{:?}", results);
-                println!("{}", format_string_with_rolls(&results.processed_string, results.original_roll_texts));
-                println!("{}", format_string_with_results(&results.processed_string, results.rolls));
+                if args.verbose {
+                    println!("{:?}", results);
+                    println!("{}", format_string_with_rolls(&results.processed_string, results.original_roll_texts));
+                    println!("{}", format_string_with_results(&results.processed_string, results.rolls));
+                } else {
+                    println!("{}", results.value)
+                }
             }
             Err(e) => println!("{}", e),
         }
-    } else {
-        println!("Attempted to invoke dice roller CLI with no roll argument. In the future this may (or may not) launch the GUI, but right now you're just getting this error message.")
     }
 }
