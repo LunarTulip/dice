@@ -1,5 +1,5 @@
-use pest::Parser;
 use pest::iterators::{Pair, Pairs};
+use pest::Parser;
 use pest_derive::Parser;
 use rand::Rng;
 use rust_decimal::prelude::*;
@@ -95,7 +95,7 @@ fn handle_binop_sequence_dice(mut sequence: Vec<BinopSequenceMember>) -> Result<
         let mut new_sequence = Vec::new();
 
         new_sequence.append(&mut sequence[..next_dice_position - 1].to_vec());
-        match (sequence[next_dice_position -1].clone(), sequence[next_dice_position + 1].clone()) {
+        match (sequence[next_dice_position - 1].clone(), sequence[next_dice_position + 1].clone()) {
             (BinopSequenceMember::NonBinop(info1), BinopSequenceMember::NonBinop(info2)) => {
                 let (value, new_rolls) = roll_dice(info1.value, info2.value)?;
                 let processed_string = String::from("{}");
@@ -110,7 +110,7 @@ fn handle_binop_sequence_dice(mut sequence: Vec<BinopSequenceMember>) -> Result<
 
                 new_sequence.push(BinopSequenceMember::NonBinop(RollInformation::new(value, processed_string, original_roll_texts, rolls)));
             }
-            _ => panic!("Found binop(s) where non-binops were expected.")
+            _ => panic!("Found binop(s) where non-binops were expected."),
         }
         if sequence.len() > next_dice_position + 2 {
             new_sequence.append(&mut sequence[next_dice_position + 2..].to_vec());
@@ -131,7 +131,7 @@ fn handle_binop_sequence_times_divide_mod(mut sequence: Vec<BinopSequenceMember>
         BinopSequenceMember::Binop(Binop::Times) | BinopSequenceMember::Binop(Binop::Divide) | BinopSequenceMember::Binop(Binop::Mod) => true,
         _ => false,
     });
-    
+
     while next_operator_check != None {
         let next_operator_position = next_operator_check.unwrap();
         let next_operator = match sequence[next_operator_position].clone() {
@@ -141,7 +141,7 @@ fn handle_binop_sequence_times_divide_mod(mut sequence: Vec<BinopSequenceMember>
         let mut new_sequence = Vec::new();
 
         new_sequence.append(&mut sequence[..next_operator_position - 1].to_vec());
-        match (sequence[next_operator_position -1].clone(), sequence[next_operator_position + 1].clone()) {
+        match (sequence[next_operator_position - 1].clone(), sequence[next_operator_position + 1].clone()) {
             (BinopSequenceMember::NonBinop(info1), BinopSequenceMember::NonBinop(info2)) => {
                 let (value, processed_string) = match next_operator {
                     Binop::Times => {
@@ -159,7 +159,7 @@ fn handle_binop_sequence_times_divide_mod(mut sequence: Vec<BinopSequenceMember>
                         let processed_string = format!("{}%{}", info1.processed_string, info2.processed_string);
                         (value, processed_string)
                     }
-                    _ => panic!("Found binop of incorrect type.")
+                    _ => panic!("Found binop of incorrect type."),
                 };
 
                 let mut original_roll_texts = info1.original_roll_texts.clone();
@@ -170,7 +170,7 @@ fn handle_binop_sequence_times_divide_mod(mut sequence: Vec<BinopSequenceMember>
 
                 new_sequence.push(BinopSequenceMember::NonBinop(RollInformation::new(value, processed_string, original_roll_texts, rolls)));
             }
-            _ => panic!("Found binop(s) where non-binops were expected.")
+            _ => panic!("Found binop(s) where non-binops were expected."),
         }
         if sequence.len() > next_operator_position + 2 {
             new_sequence.append(&mut sequence[next_operator_position + 2..].to_vec());
@@ -191,7 +191,7 @@ fn handle_binop_sequence_plus_minus(mut sequence: Vec<BinopSequenceMember>) -> R
         BinopSequenceMember::Binop(Binop::Plus) | BinopSequenceMember::Binop(Binop::Minus) => true,
         _ => false,
     });
-    
+
     while next_operator_check != None {
         let next_operator_position = next_operator_check.unwrap();
         let next_operator = match sequence[next_operator_position].clone() {
@@ -201,7 +201,7 @@ fn handle_binop_sequence_plus_minus(mut sequence: Vec<BinopSequenceMember>) -> R
         let mut new_sequence = Vec::new();
 
         new_sequence.append(&mut sequence[..next_operator_position - 1].to_vec());
-        match (sequence[next_operator_position -1].clone(), sequence[next_operator_position + 1].clone()) {
+        match (sequence[next_operator_position - 1].clone(), sequence[next_operator_position + 1].clone()) {
             (BinopSequenceMember::NonBinop(info1), BinopSequenceMember::NonBinop(info2)) => {
                 let (value, processed_string) = match next_operator {
                     Binop::Plus => {
@@ -214,7 +214,7 @@ fn handle_binop_sequence_plus_minus(mut sequence: Vec<BinopSequenceMember>) -> R
                         let processed_string = format!("{}-{}", info1.processed_string, info2.processed_string);
                         (value, processed_string)
                     }
-                    _ => panic!("Found binop of incorrect type.")
+                    _ => panic!("Found binop of incorrect type."),
                 };
 
                 let mut original_roll_texts = info1.original_roll_texts.clone();
@@ -225,7 +225,7 @@ fn handle_binop_sequence_plus_minus(mut sequence: Vec<BinopSequenceMember>) -> R
 
                 new_sequence.push(BinopSequenceMember::NonBinop(RollInformation::new(value, processed_string, original_roll_texts, rolls)));
             }
-            _ => panic!("Found binop(s) where non-binops were expected.")
+            _ => panic!("Found binop(s) where non-binops were expected."),
         }
         if sequence.len() > next_operator_position + 2 {
             new_sequence.append(&mut sequence[next_operator_position + 2..].to_vec());
@@ -271,7 +271,7 @@ fn parse_number(number: Pair<Rule>) -> (Decimal, String) {
 
     let mut number_as_string = String::from(number.as_str());
     number_as_string.retain(|c| !c.is_whitespace());
-    
+
     (Decimal::from_str(&number_as_string).unwrap(), number_as_string)
 }
 
@@ -279,7 +279,7 @@ fn parse_binop(binop: Pair<Rule>) -> Binop {
     assert_eq!(binop.as_rule(), Rule::binop, "Called parse_binop on non-binop.");
 
     let internal_binop = binop.into_inner().next().unwrap();
-    
+
     match internal_binop.as_rule() {
         Rule::dice => Binop::Dice,
         Rule::plus_binop => Binop::Plus,
@@ -337,7 +337,7 @@ fn parse_non_operator(non_operator: Pair<Rule>) -> Result<RollInformation, Strin
             Ok(RollInformation::new(number, string, Vec::new(), Vec::new()))
         }
         Rule::paren_block => parse_paren_block(inside),
-        _ => panic!("Non-operator token inside isn't a number or paren block.")
+        _ => panic!("Non-operator token inside isn't a number or paren block."),
     }
 }
 
@@ -351,7 +351,12 @@ fn parse_paired_unop(paired_unop: Pair<Rule>) -> Result<RollInformation, String>
 
     match parse_unop(unop) {
         Unop::Plus => Ok(RollInformation::new(non_op.value, format!("+{}", non_op.processed_string), non_op.original_roll_texts, non_op.rolls)),
-        Unop::Minus => Ok(RollInformation::new(non_op.value * Decimal::from(-1), format!("-{}", non_op.processed_string), non_op.original_roll_texts, non_op.rolls)),
+        Unop::Minus => Ok(RollInformation::new(
+            non_op.value * Decimal::from(-1),
+            format!("-{}", non_op.processed_string),
+            non_op.original_roll_texts,
+            non_op.rolls,
+        )),
     }
 }
 
@@ -359,7 +364,7 @@ fn parse_non_binop(non_binop: Pair<Rule>) -> Result<RollInformation, String> {
     assert_eq!(non_binop.as_rule(), Rule::non_binop, "Called parse_non_binop on non-non-binop.");
 
     let inside = non_binop.into_inner().next().unwrap();
-    
+
     match inside.as_rule() {
         Rule::number => {
             let (number, string) = parse_number(inside);
@@ -367,7 +372,7 @@ fn parse_non_binop(non_binop: Pair<Rule>) -> Result<RollInformation, String> {
         }
         Rule::paren_block => parse_paren_block(inside),
         Rule::paired_unop => parse_paired_unop(inside),
-        _ => panic!("Non-binop token inside isn't a number, paren block, or paired unop.")
+        _ => panic!("Non-binop token inside isn't a number, paren block, or paired unop."),
     }
 }
 
@@ -396,7 +401,7 @@ fn parse_legitimate_sequence(sequence: Pair<Rule>) -> Result<RollInformation, St
 fn parse_full_expression(mut tree: Pairs<Rule>) -> Result<RollInformation, String> {
     let full_expression = tree.next().unwrap();
     let sequence = full_expression.into_inner().next().unwrap();
-    
+
     parse_legitimate_sequence(sequence)
 }
 
