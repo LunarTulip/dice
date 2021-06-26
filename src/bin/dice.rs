@@ -1,6 +1,7 @@
 use argh::FromArgs;
 use dice::parse::parse_input;
 use rust_decimal::prelude::*;
+use std::io::stdin;
 
 /// Roll dice via string input.
 #[derive(FromArgs)]
@@ -36,20 +37,27 @@ fn format_string_with_results(string: &str, result_vecs: Vec<Vec<Decimal>>) -> S
 fn main() {
     let args: Args = argh::from_env();
 
-    if args.roll.is_empty() {
-        println!("Attempted to invoke dice roller CLI with no roll argument. In the future this may (or may not) launch the GUI, but right now you're just getting this error message.");
+    let input = if !args.roll.is_empty() {
+        args.roll.join(" ")
     } else {
-        match parse_input(&args.roll.join(" ")) {
-            Ok(results) => {
-                if args.verbose {
-                    println!("{:?}", results);
-                    println!("{}", format_string_with_rolls(&results.processed_string, results.original_roll_texts));
-                    println!("{}", format_string_with_results(&results.processed_string, results.rolls));
-                } else {
-                    println!("{}", results.value)
-                }
+        let mut buffer = String::new();
+        match stdin().read_line(&mut buffer) {
+            Ok(_) => (),
+            Err(_) => println!("Failed to read from stdin."),
+        };
+        buffer
+    };
+
+    match parse_input(&input) {
+        Ok(results) => {
+            if args.verbose {
+                println!("Original roll text: {}", format_string_with_rolls(&results.processed_string, results.original_roll_texts));
+                println!("With results: {}", format_string_with_results(&results.processed_string, results.rolls));
+                println!("Total: {}", results.value);
+            } else {
+                println!("{}", results.value);
             }
-            Err(e) => println!("{}", e),
         }
+        Err(e) => println!("{}", e),
     }
 }
