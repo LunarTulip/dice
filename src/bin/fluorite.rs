@@ -1,6 +1,6 @@
 use argh::FromArgs;
 use fluorite::parse::parse_input;
-use rust_decimal::prelude::*;
+use fluorite::{format_string_with_rolls, format_string_with_results};
 use std::io::stdin;
 
 /// Roll dice via string input.
@@ -11,27 +11,6 @@ struct Args {
     verbose: bool,
     #[argh(positional)]
     roll: Vec<String>,
-}
-
-// This function is almost certainly horribly inefficient, with all the strings it allocates. Improvements wanted.
-fn format_string_with_rolls(string: &str, rolls: Vec<String>) -> String {
-    let mut formatted = String::from(string);
-    for roll in rolls {
-        formatted = formatted.replacen("{}", &format!("{}", roll), 1);
-    }
-
-    formatted
-}
-
-// This function is almost certainly horribly inefficient, with all the strings it allocates. Improvements wanted.
-fn format_string_with_results(string: &str, result_vecs: Vec<Vec<Decimal>>) -> String {
-    let mut formatted = String::from(string);
-    for roll_results in result_vecs {
-        let joined = roll_results.iter().map(|dec| dec.to_string()).collect::<Vec<String>>().join(", ");
-        formatted = formatted.replacen("{}", &format!("[{}]", joined), 1);
-    }
-
-    formatted
 }
 
 fn main() {

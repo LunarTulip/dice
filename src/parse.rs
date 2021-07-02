@@ -4,7 +4,7 @@ use pest_derive::Parser;
 use rand::Rng;
 use rust_decimal::prelude::*;
 
-pub const VALID_INPUT_CHARS: &str = "0123456789d+-*/%() ";
+pub const VALID_INPUT_CHARS: &str = "0123456789d.+-*/%() ";
 
 #[derive(Clone)]
 enum Binop {
