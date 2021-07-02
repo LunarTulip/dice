@@ -1,8 +1,10 @@
 #![windows_subsystem = "windows"]
 
-use druid::widget::{Align, Flex, Label, TextBox};
+use druid::keyboard_types::Key;
+use druid::widget::prelude::*;
+use druid::widget::{Align, Controller, Flex, Label};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
-use fluorite::parse::{parse_input, RollInformation};
+use fluorite::parse::{parse_input, RollInformation, VALID_INPUT_CHARS};
 use std::sync::Arc;
 
 struct RollShortcut {
@@ -12,7 +14,7 @@ struct RollShortcut {
 
 #[derive(Clone, Data, Lens)]
 struct DiceCalculator {
-    current_input: String,
+    pub current_input: String,
     history: Arc<Vec<Result<RollInformation, String>>>,
     shortcuts: Arc<Vec<RollShortcut>>,
 }
@@ -31,10 +33,36 @@ impl DiceCalculator {
     }
 }
 
+struct KeyboardListener {}
+
+impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for KeyboardListener {
+    fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut DiceCalculator, env: &Env) {
+        ctx.request_focus();
+        if let Event::KeyDown(key_event) = event {
+            match &key_event.key {
+                Key::Character(s) => {
+                    if VALID_INPUT_CHARS.contains(s) {
+                        data.current_input.push_str(&s);
+                    } else {
+                        data.current_input.push_str("_INVALID_");
+                    }
+                }
+                Key::Enter => data.roll(),
+                _ => (),
+            }
+        }
+        child.event(ctx, event, data, env);
+    }
+}
+
 fn build_current_input_display() -> impl Widget<DiceCalculator> {
-    TextBox::new()
-        .with_placeholder("Roll text")
-        .lens(DiceCalculator::current_input)
+    Label::<DiceCalculator>::dynamic(|calc, _| {
+        if calc.current_input.is_empty() {
+            String::from("Roll text")
+        } else {
+            String::from(&calc.current_input)
+        }
+    })
 }
 
 fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
@@ -73,6 +101,7 @@ fn build_main_window() -> impl Widget<DiceCalculator> {
             Align::right(build_history_column()),
             1.
         )
+        .controller(KeyboardListener {})
 }
 
 fn build_menu<T: Data>() -> MenuDesc<T> {
@@ -88,10 +117,9 @@ fn build_menu<T: Data>() -> MenuDesc<T> {
 
 fn main() {
     let window = WindowDesc::new(build_main_window)
-        .title("Dice Roller Which Needs A Better Name")
+        .title("Fluorite")
         .menu(build_menu());
-    let calculator = DiceCalculator::new();
     AppLauncher::with_window(window)
-        .launch(calculator)
+        .launch(DiceCalculator::new())
         .unwrap();
 }

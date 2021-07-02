@@ -4,6 +4,8 @@ use pest_derive::Parser;
 use rand::Rng;
 use rust_decimal::prelude::*;
 
+pub const VALID_INPUT_CHARS: &str = "0123456789d+-*/%() ";
+
 #[derive(Clone)]
 enum Binop {
     Dice,
@@ -257,7 +259,7 @@ fn handle_binop_sequence(sequence: Vec<BinopSequenceMember>) -> Result<RollInfor
 
 fn clean_input(input: &str) -> String {
     let mut clean = String::from(input);
-    clean.retain(|c| "0123456789d+-*/%() ".contains(c));
+    clean.retain(|c| VALID_INPUT_CHARS.contains(c));
 
     clean
 }
