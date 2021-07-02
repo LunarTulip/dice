@@ -1,5 +1,5 @@
 use argh::FromArgs;
-use dice::parse::parse_input;
+use fluorite::parse::parse_input;
 use rust_decimal::prelude::*;
 use std::io::stdin;
 

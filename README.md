@@ -1,4 +1,4 @@
-# Dice Roller Which Needs A Better Name
+# Fluorite
 
 When finished, this program will be a highly versatile and powerful dice roller, inspired by the iOS app Dice Calculator. At the moment, its functionality is limited; but its CLI is already mostly functional, for those for whom that's enough.
 
@@ -21,3 +21,4 @@ The central intended selling points for the program's release are:
 ### Code Prettiness
 - Improve format functions in `dice.rs`
 - Maybe find a way to make the binop-sequence-handling code less repetitive?
+- Figure out a better way to handle OOO maybe?

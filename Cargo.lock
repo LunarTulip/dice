@@ -286,18 +286,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dice"
-version = "0.2.1"
-dependencies = [
- "argh",
- "druid",
- "pest",
- "pest_derive",
- "rand",
- "rust_decimal",
-]
-
-[[package]]
 name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -435,6 +423,18 @@ name = "fluent-syntax"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac0f7e83d14cccbf26e165d8881dcac5891af0d85a88543c09dd72ebd31d91ba"
+
+[[package]]
+name = "fluorite"
+version = "0.2.3"
+dependencies = [
+ "argh",
+ "druid",
+ "pest",
+ "pest_derive",
+ "rand",
+ "rust_decimal",
+]
 
 [[package]]
 name = "fnv"

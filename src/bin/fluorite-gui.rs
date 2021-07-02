@@ -1,8 +1,8 @@
 #![windows_subsystem = "windows"]
 
-use dice::parse::{parse_input, RollInformation};
 use druid::widget::{Align, Flex, Label, TextBox};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
+use fluorite::parse::{parse_input, RollInformation};
 use std::sync::Arc;
 
 struct RollShortcut {
