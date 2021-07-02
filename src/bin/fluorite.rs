@@ -1,6 +1,6 @@
 use argh::FromArgs;
 use fluorite::parse::parse_input;
-use fluorite::{format_string_with_rolls, format_string_with_results};
+use fluorite::{format_string_with_results, format_string_with_rolls};
 use std::io::stdin;
 
 /// Roll dice via string input.

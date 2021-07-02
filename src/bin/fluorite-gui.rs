@@ -4,8 +4,8 @@ use druid::keyboard_types::Key;
 use druid::widget::prelude::*;
 use druid::widget::{Align, Controller, Flex, Label};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
-use fluorite::parse::{parse_input, RollInformation, VALID_INPUT_CHARS};
 use fluorite::format_string_with_results;
+use fluorite::parse::{parse_input, RollInformation, VALID_INPUT_CHARS};
 use std::sync::Arc;
 
 struct RollShortcut {
@@ -58,34 +58,24 @@ impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for KeyboardListen
 }
 
 fn build_current_input_display() -> impl Widget<DiceCalculator> {
-    Label::<DiceCalculator>::dynamic(|calc, _| {
-        if calc.current_input.is_empty() {
-            String::from("Roll text")
-        } else {
-            String::from(&calc.current_input)
-        }
-    })
+    Label::<DiceCalculator>::dynamic(|calc, _| if calc.current_input.is_empty() { String::from("Roll text") } else { String::from(&calc.current_input) })
 }
 
 fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
-    Label::new("Main Calculator Display")
+    Label::new("Main Calculator Display Placeholder")
 }
 
 fn build_main_column() -> impl Widget<DiceCalculator> {
-    Flex::column()
-        .with_flex_child(build_current_input_display(), 1.)
-        .with_flex_child(build_main_calculator_display(), 1.)
+    Flex::column().with_flex_child(build_current_input_display(), 1.).with_flex_child(build_main_calculator_display(), 1.)
 }
 
 fn build_latest_output_display() -> impl Widget<DiceCalculator> {
-    Label::<DiceCalculator>::dynamic(|calc, _| {
-        match calc.history.last() {
-            None => String::new(),
-            Some(roll_result) => match &roll_result.1 {
-                Err(_) => String::from("ERROR"),
-                Ok(info) => format!("{}", info.value),
-            }
-        }
+    Label::<DiceCalculator>::dynamic(|calc, _| match calc.history.last() {
+        None => String::new(),
+        Some(roll_result) => match &roll_result.1 {
+            Err(_) => String::from("ERROR"),
+            Ok(info) => format!("{}", info.value),
+        },
     })
 }
 
@@ -95,7 +85,12 @@ fn build_history_display() -> impl Widget<DiceCalculator> {
         for roll_result in calc.history.iter().rev() {
             match roll_result {
                 (input, Err(e)) => history.push_str(&format!("Input: {}\nError: {}\n\n", input, e)),
-                (input, Ok(info)) => history.push_str(&format!("Input: {}\nRolled: {}\nResult: {}\n\n", input, format_string_with_results(&info.processed_string, info.rolls.clone()), info.value)),
+                (input, Ok(info)) => history.push_str(&format!(
+                    "Input: {}\nRolled: {}\nResult: {}\n\n",
+                    input,
+                    format_string_with_results(&info.processed_string, info.rolls.clone()),
+                    info.value
+                )),
             }
         }
         history
@@ -103,9 +98,7 @@ fn build_history_display() -> impl Widget<DiceCalculator> {
 }
 
 fn build_history_column() -> impl Widget<DiceCalculator> {
-    Flex::column()
-        .with_flex_child(build_latest_output_display(), 1.)
-        .with_flex_child(build_history_display(), 1.)
+    Flex::column().with_flex_child(build_latest_output_display(), 1.).with_flex_child(build_history_display(), 1.)
 }
 
 fn build_shortcuts_column() -> impl Widget<DiceCalculator> {
@@ -116,18 +109,9 @@ fn build_shortcuts_column() -> impl Widget<DiceCalculator> {
 
 fn build_main_window() -> impl Widget<DiceCalculator> {
     Flex::row()
-        .with_flex_child(
-            Align::left(build_shortcuts_column()),
-            1.
-        )
-        .with_flex_child(
-            Align::centered(build_main_column()),
-            1.
-        )
-        .with_flex_child(
-            Align::right(build_history_column()),
-            1.
-        )
+        .with_flex_child(Align::left(build_shortcuts_column()), 1.)
+        .with_flex_child(Align::centered(build_main_column()), 1.)
+        .with_flex_child(Align::right(build_history_column()), 1.)
         .controller(KeyboardListener {})
 }
 
@@ -137,16 +121,10 @@ fn build_menu<T: Data>() -> MenuDesc<T> {
     let exit_command = Command::new(Selector::new("Exit"), (), Target::Global);
     let exit_entry = MenuItem::new(LocalizedString::new("Exit"), exit_command);
 
-    MenuDesc::empty()
-        .append(placeholder_entry)
-        .append(exit_entry)
+    MenuDesc::empty().append(placeholder_entry).append(exit_entry)
 }
 
 fn main() {
-    let window = WindowDesc::new(build_main_window)
-        .title("Fluorite")
-        .menu(build_menu());
-    AppLauncher::with_window(window)
-        .launch(DiceCalculator::new())
-        .unwrap();
+    let window = WindowDesc::new(build_main_window).title("Fluorite").menu(build_menu());
+    AppLauncher::with_window(window).launch(DiceCalculator::new()).unwrap();
 }
