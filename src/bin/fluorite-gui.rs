@@ -2,7 +2,7 @@
 
 use druid::keyboard_types::Key;
 use druid::widget::prelude::*;
-use druid::widget::{Align, Controller, Flex, Label};
+use druid::widget::{Align, Controller, Flex, Label, TextBox};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
 use fluorite::format_string_with_results;
 use fluorite::parse::{parse_input, RollInformation, VALID_INPUT_CHARS};
@@ -18,6 +18,8 @@ struct DiceCalculator {
     pub current_input: String,
     history: Arc<Vec<(String, Result<RollInformation, String>)>>,
     shortcuts: Arc<Vec<RollShortcut>>,
+    new_shortcut_name: String,
+    new_shortcut_text: String,
 }
 
 impl DiceCalculator {
@@ -26,6 +28,8 @@ impl DiceCalculator {
             current_input: String::new(),
             history: Arc::new(Vec::new()),
             shortcuts: Arc::new(Vec::new()),
+            new_shortcut_name: String::new(),
+            new_shortcut_text: String::new(),
         }
     }
     fn roll(&mut self) {
@@ -38,20 +42,22 @@ struct KeyboardListener {}
 
 impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for KeyboardListener {
     fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut DiceCalculator, env: &Env) {
-        ctx.request_focus();
-        if let Event::KeyDown(key_event) = event {
-            match &key_event.key {
+        match event {
+            Event::WindowConnected => ctx.request_focus(),
+            Event::MouseDown(_) => ctx.request_focus(),
+            Event::KeyDown(key_event) => match &key_event.key {
                 Key::Character(s) => {
-                    if VALID_INPUT_CHARS.contains(s) {
+                    if ctx.is_focused() && VALID_INPUT_CHARS.contains(s)  {
                         data.current_input.push_str(&s);
                     }
                 }
-                Key::Backspace => {
+                Key::Backspace => if ctx.is_focused() {
                     let _ = data.current_input.pop();
                 }
                 Key::Enter => data.roll(),
                 _ => (),
-            }
+            },
+            _ => ()
         }
         child.event(ctx, event, data, env);
     }
@@ -101,10 +107,23 @@ fn build_history_column() -> impl Widget<DiceCalculator> {
     Flex::column().with_flex_child(build_latest_output_display(), 1.).with_flex_child(build_history_display(), 1.)
 }
 
+fn build_shortcut_creation_interface() -> impl Widget<DiceCalculator> {
+    Flex::column()
+        .with_flex_child(TextBox::new()
+            .with_placeholder("Name")
+            .lens(DiceCalculator::new_shortcut_name),
+            1.)
+        .with_flex_child(TextBox::new() // FIGURE OUT HOW TO FILTER OUT INVALID CHARS
+            .with_placeholder("Roll Text")
+            .lens(DiceCalculator::new_shortcut_text),
+            1.)
+        .with_flex_child(Label::new("Button Placeholder"), 1.)
+}
+
 fn build_shortcuts_column() -> impl Widget<DiceCalculator> {
     Flex::column()
-        .with_flex_child(Label::new("Create-A-Shortcut Interface"), 1.)
-        .with_flex_child(Label::new("Saved Roll Shortcuts"), 1.)
+        .with_flex_child(build_shortcut_creation_interface(), 1.)
+        .with_flex_child(Label::new("Saved Roll Shortcuts Placeholder"), 1.)
 }
 
 fn build_main_window() -> impl Widget<DiceCalculator> {
