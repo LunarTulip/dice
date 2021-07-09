@@ -289,7 +289,7 @@ fn parse_binop(binop: Pair<Rule>) -> Binop {
         Rule::times => Binop::Times,
         Rule::divide => Binop::Divide,
         Rule::modulus => Binop::Mod,
-        _ => panic!("Non-binop found inside binop token."),
+        _ => unreachable!("Non-binop found inside binop token."),
     }
 }
 
@@ -301,7 +301,7 @@ fn parse_unop(unop: Pair<Rule>) -> Unop {
     match internal_unop.as_rule() {
         Rule::plus_unop => Unop::Plus,
         Rule::minus_unop => Unop::Minus,
-        _ => panic!("Non-unop found inside unop token."),
+        _ => unreachable!("Non-unop found inside unop token."),
     }
 }
 
@@ -339,7 +339,7 @@ fn parse_non_operator(non_operator: Pair<Rule>) -> Result<RollInformation, Strin
             Ok(RollInformation::new(number, string, Vec::new(), Vec::new()))
         }
         Rule::paren_block => parse_paren_block(inside),
-        _ => panic!("Non-operator token inside isn't a number or paren block."),
+        _ => unreachable!("Non-operator token inside isn't a number or paren block."),
     }
 }
 
@@ -374,7 +374,7 @@ fn parse_non_binop(non_binop: Pair<Rule>) -> Result<RollInformation, String> {
         }
         Rule::paren_block => parse_paren_block(inside),
         Rule::paired_unop => parse_paired_unop(inside),
-        _ => panic!("Non-binop token inside isn't a number, paren block, or paired unop."),
+        _ => unreachable!("Non-binop token inside isn't a number, paren block, or paired unop."),
     }
 }
 

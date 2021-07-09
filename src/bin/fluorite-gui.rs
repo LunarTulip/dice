@@ -4,13 +4,18 @@ use druid::keyboard_types::Key;
 use druid::text::format::{Formatter, Validation, ValidationError};
 use druid::text::selection::Selection;
 use druid::widget::prelude::*;
-use druid::widget::{Align, Controller, Flex, Label, TextBox, ValueTextBox};
+use druid::widget::{Align, Button, Controller, Flex, Label, TextBox, ValueTextBox};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
 use fluorite::format_string_with_results;
 use fluorite::parse::{clean_input, parse_input, RollInformation, VALID_INPUT_CHARS};
 use std::sync::Arc;
 use std::error::Error;
 
+/////////////////
+//   Structs   //
+/////////////////
+
+#[derive(Clone)]
 struct RollShortcut {
     name: String,
     roll: String,
@@ -18,8 +23,8 @@ struct RollShortcut {
 
 #[derive(Clone, Data, Lens)]
 struct DiceCalculator {
-    pub current_input: String,
-    pub stored_input: String,
+    current_input: String,
+    stored_input: String,
     history: Arc<Vec<(String, Result<RollInformation, String>)>>,
     steps_back_in_history: usize,
     shortcuts: Arc<Vec<RollShortcut>>,
@@ -44,6 +49,17 @@ impl DiceCalculator {
         self.current_input = String::new();
         self.stored_input = String::new();
         self.steps_back_in_history = 0;
+    }
+    fn add_shortcut(_ctx: &mut EventCtx, data: &mut Self, _env: &Env) {
+        let new_shortcut = RollShortcut {
+            name: data.new_shortcut_name.clone(),
+            roll: data.new_shortcut_text.clone(),
+        };
+        if !data.shortcuts.iter().any(|shortcut| shortcut.name == new_shortcut.name || new_shortcut.name == "") {
+            Arc::make_mut(&mut data.shortcuts).push(new_shortcut);
+            data.new_shortcut_name = String::new();
+            data.new_shortcut_text = String::new();
+        } // Figure out some way to provide clear feedback on success/failure
     }
 }
 
@@ -97,7 +113,7 @@ impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for KeyboardListen
 #[derive(Debug)]
 struct FormatValidationError{}
 
-impl std::fmt::Display for FormatValidationError {
+impl std::fmt::Display for FormatValidationError { // Ugly hack; build a real implementation.
     fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ok(())
     }
@@ -127,6 +143,10 @@ impl Formatter<String> for DiceTextFormatter {
         Ok(String::from(input))
     }
 }
+
+//////////////////////
+//   GUI Assembly   //
+//////////////////////
 
 fn build_current_input_display() -> impl Widget<DiceCalculator> {
     Label::<DiceCalculator>::dynamic(|calc, _| if calc.current_input.is_empty() { String::from("Roll text") } else { String::from(&calc.current_input) })
@@ -185,13 +205,25 @@ fn build_shortcut_creation_interface() -> impl Widget<DiceCalculator> {
         )
             .lens(DiceCalculator::new_shortcut_text),
             1.)
-        .with_flex_child(Label::new("Button Placeholder"), 1.)
+        .with_flex_child(Button::new("Create Shortcut")
+            .on_click(DiceCalculator::add_shortcut)
+        , 1.)
+}
+
+fn build_shortcut_list() -> impl Widget<DiceCalculator> {
+    Label::<DiceCalculator>::dynamic(|calc, _| {
+        let mut list_as_text = String::new();
+        for shortcut in calc.shortcuts.iter().rev() {
+            list_as_text.push_str(&format!("{}\n{}\n[Roll Placeholder]\n[Delete Placeholder]\n\n", shortcut.name, shortcut.roll));
+        }
+        list_as_text
+    })
 }
 
 fn build_shortcuts_column() -> impl Widget<DiceCalculator> {
     Flex::column()
         .with_flex_child(build_shortcut_creation_interface(), 1.)
-        .with_flex_child(Label::new("Saved Roll Shortcuts Placeholder"), 1.)
+        .with_flex_child(build_shortcut_list(), 1.)
 }
 
 fn build_main_window() -> impl Widget<DiceCalculator> {
