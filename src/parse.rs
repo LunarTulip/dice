@@ -257,7 +257,7 @@ fn handle_binop_sequence(sequence: Vec<BinopSequenceMember>) -> Result<RollInfor
     }
 }
 
-fn clean_input(input: &str) -> String {
+pub fn clean_input(input: &str) -> String {
     let mut clean = String::from(input);
     clean.retain(|c| VALID_INPUT_CHARS.contains(c));
 

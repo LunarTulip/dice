@@ -16,7 +16,10 @@ The central intended selling points for the program's release are:
 - Improve whitespace handling so as to avoid the current lossiness
 - Figure out an elegant way to handle verbose display of nested dice rolls. (See, for example, `2d3d4`. Rendering as [2, 1]d4 loses something; so does rendering as [4, 2, 4].)
 - Add support for multiple inputs in a single CLI run, via `cat` or suchlike
-- Implement GUI
+
+### Debug
+
+- Correctly display results for nested rolls, which at present isn't just *inelegant* but instead straight-up *wrong*.
 
 ### Code Prettiness
 - Improve format functions in `dice.rs`

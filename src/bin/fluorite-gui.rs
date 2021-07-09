@@ -1,12 +1,15 @@
 #![windows_subsystem = "windows"]
 
 use druid::keyboard_types::Key;
+use druid::text::format::{Formatter, Validation, ValidationError};
+use druid::text::selection::Selection;
 use druid::widget::prelude::*;
-use druid::widget::{Align, Controller, Flex, Label, TextBox};
+use druid::widget::{Align, Controller, Flex, Label, TextBox, ValueTextBox};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
 use fluorite::format_string_with_results;
-use fluorite::parse::{parse_input, RollInformation, VALID_INPUT_CHARS};
+use fluorite::parse::{clean_input, parse_input, RollInformation, VALID_INPUT_CHARS};
 use std::sync::Arc;
+use std::error::Error;
 
 struct RollShortcut {
     name: String,
@@ -16,7 +19,9 @@ struct RollShortcut {
 #[derive(Clone, Data, Lens)]
 struct DiceCalculator {
     pub current_input: String,
+    pub stored_input: String,
     history: Arc<Vec<(String, Result<RollInformation, String>)>>,
+    steps_back_in_history: usize,
     shortcuts: Arc<Vec<RollShortcut>>,
     new_shortcut_name: String,
     new_shortcut_text: String,
@@ -26,7 +31,9 @@ impl DiceCalculator {
     fn new() -> DiceCalculator {
         DiceCalculator {
             current_input: String::new(),
+            stored_input: String::new(),
             history: Arc::new(Vec::new()),
+            steps_back_in_history: 0,
             shortcuts: Arc::new(Vec::new()),
             new_shortcut_name: String::new(),
             new_shortcut_text: String::new(),
@@ -35,6 +42,8 @@ impl DiceCalculator {
     fn roll(&mut self) {
         Arc::make_mut(&mut self.history).push((self.current_input.clone(), parse_input(&self.current_input)));
         self.current_input = String::new();
+        self.stored_input = String::new();
+        self.steps_back_in_history = 0;
     }
 }
 
@@ -45,21 +54,77 @@ impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for KeyboardListen
         match event {
             Event::WindowConnected => ctx.request_focus(),
             Event::MouseDown(_) => ctx.request_focus(),
-            Event::KeyDown(key_event) => match &key_event.key {
-                Key::Character(s) => {
-                    if ctx.is_focused() && VALID_INPUT_CHARS.contains(s)  {
-                        data.current_input.push_str(&s);
+            Event::KeyDown(key_event) => if ctx.is_focused() {
+                match &key_event.key {
+                    Key::Character(s) => {
+                        if VALID_INPUT_CHARS.contains(s)  {
+                            data.current_input.push_str(&s);
+                        }
                     }
+                    Key::Backspace => {
+                        let _ = data.current_input.pop();
+                    }
+                    Key::ArrowUp => {
+                        let history_len = data.history.len();
+                        if data.steps_back_in_history < history_len {
+                            if data.steps_back_in_history == 0 {
+                                data.stored_input = data.current_input.clone();
+                            }
+                            data.steps_back_in_history += 1;
+                            data.current_input = data.history[history_len - data.steps_back_in_history].0.clone();
+                        }
+                    }
+                    Key::ArrowDown => {
+                        if data.steps_back_in_history > 0 {
+                            data.steps_back_in_history -= 1;
+                            data.current_input = if data.steps_back_in_history == 0 {
+                                data.stored_input.clone()
+                            } else {
+                                data.history[data.history.len() - data.steps_back_in_history].0.clone()
+                            }
+                        }
+                    }
+                    Key::Enter => data.roll(),
+                    _ => (),
                 }
-                Key::Backspace => if ctx.is_focused() {
-                    let _ = data.current_input.pop();
-                }
-                Key::Enter => data.roll(),
-                _ => (),
             },
             _ => ()
         }
         child.event(ctx, event, data, env);
+    }
+}
+
+#[derive(Debug)]
+struct FormatValidationError{}
+
+impl std::fmt::Display for FormatValidationError {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Ok(())
+    }
+}
+
+impl Error for FormatValidationError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+}
+
+struct DiceTextFormatter {}
+
+impl Formatter<String> for DiceTextFormatter {
+    fn format(&self, value: &String) -> String {
+        value.clone()
+    }
+    fn validate_partial_input(&self, input: &str, _sel: &Selection) -> Validation {
+        let input_cleaned = clean_input(input);
+        if &input_cleaned == input {
+            Validation::success()
+        } else {
+            Validation::failure(FormatValidationError {}).change_text(input_cleaned)
+        }
+    }
+    fn value(&self, input: &str) -> Result<String, ValidationError> {
+        Ok(String::from(input))
     }
 }
 
@@ -113,8 +178,11 @@ fn build_shortcut_creation_interface() -> impl Widget<DiceCalculator> {
             .with_placeholder("Name")
             .lens(DiceCalculator::new_shortcut_name),
             1.)
-        .with_flex_child(TextBox::new() // FIGURE OUT HOW TO FILTER OUT INVALID CHARS
-            .with_placeholder("Roll Text")
+        .with_flex_child(ValueTextBox::new(
+            TextBox::new()
+                .with_placeholder("Roll Text"),
+            DiceTextFormatter {}
+        )
             .lens(DiceCalculator::new_shortcut_text),
             1.)
         .with_flex_child(Label::new("Button Placeholder"), 1.)
