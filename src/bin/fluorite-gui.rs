@@ -4,7 +4,7 @@ use druid::keyboard_types::Key;
 use druid::text::format::{Formatter, Validation, ValidationError};
 use druid::text::selection::Selection;
 use druid::widget::prelude::*;
-use druid::widget::{Align, Button, Controller, Flex, Label, TextBox, ValueTextBox};
+use druid::widget::{Align, Button, Controller, Flex, Label, List, TextBox, ValueTextBox};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
 use fluorite::format_string_with_results;
 use fluorite::parse::{clean_input, parse_input, RollInformation, VALID_INPUT_CHARS};
@@ -15,7 +15,7 @@ use std::sync::Arc;
 //   Structs   //
 /////////////////
 
-#[derive(Clone)]
+#[derive(Clone, Data)]
 struct RollShortcut {
     name: String,
     roll: String,
@@ -50,61 +50,73 @@ impl DiceCalculator {
         self.stored_input = String::new();
         self.steps_back_in_history = 0;
     }
+    fn roll_from_shortcut(&mut self, shortcut: RollShortcut) {
+        Arc::make_mut(&mut self.history).push((shortcut.roll.clone(), parse_input(&shortcut.roll)));
+        if self.steps_back_in_history != 0 {
+            self.current_input = self.stored_input.clone()
+        }
+        self.steps_back_in_history = 0;
+    }
     fn add_shortcut(_ctx: &mut EventCtx, data: &mut Self, _env: &Env) {
         let new_shortcut = RollShortcut {
             name: data.new_shortcut_name.clone(),
             roll: data.new_shortcut_text.clone(),
         };
         if !data.shortcuts.iter().any(|shortcut| shortcut.name == new_shortcut.name || new_shortcut.name == "") {
-            Arc::make_mut(&mut data.shortcuts).push(new_shortcut);
+            Arc::make_mut(&mut data.shortcuts).insert(0, new_shortcut);
             data.new_shortcut_name = String::new();
             data.new_shortcut_text = String::new();
         } // Figure out some way to provide clear feedback on success/failure
     }
 }
 
-struct KeyboardListener {}
+struct DiceCalcEventHandler;
 
-impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for KeyboardListener {
+impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for DiceCalcEventHandler {
     fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut DiceCalculator, env: &Env) {
         match event {
             Event::WindowConnected => ctx.request_focus(),
             Event::MouseDown(_) => ctx.request_focus(),
-            Event::KeyDown(key_event) => {
-                if ctx.is_focused() {
-                    match &key_event.key {
-                        Key::Character(s) => {
-                            if VALID_INPUT_CHARS.contains(s) {
-                                data.current_input.push_str(&s);
-                            }
-                        }
-                        Key::Backspace => {
-                            let _ = data.current_input.pop();
-                        }
-                        Key::ArrowUp => {
-                            let history_len = data.history.len();
-                            if data.steps_back_in_history < history_len {
-                                if data.steps_back_in_history == 0 {
-                                    data.stored_input = data.current_input.clone();
-                                }
-                                data.steps_back_in_history += 1;
-                                data.current_input = data.history[history_len - data.steps_back_in_history].0.clone();
-                            }
-                        }
-                        Key::ArrowDown => {
-                            if data.steps_back_in_history > 0 {
-                                data.steps_back_in_history -= 1;
-                                data.current_input = if data.steps_back_in_history == 0 {
-                                    data.stored_input.clone()
-                                } else {
-                                    data.history[data.history.len() - data.steps_back_in_history].0.clone()
-                                }
-                            }
-                        }
-                        Key::Enter => data.roll(),
-                        _ => (),
+            Event::Command(command) => {
+                if command.is::<RollShortcut>(Selector::new("ShortcutRoll")) {
+                    let shortcut = command.get_unchecked::<RollShortcut>(Selector::new("ShortcutRoll")).clone();
+                    data.roll_from_shortcut(shortcut);
+                } else if command.is::<RollShortcut>(Selector::new("ShortcutDelete")) {
+                    let name_to_delete = command.get_unchecked::<RollShortcut>(Selector::new("ShortcutDelete")).name.clone();
+                    Arc::make_mut(&mut data.shortcuts).retain(|shortcut| shortcut.name != name_to_delete);
+                }
+            },
+            Event::KeyDown(key_event) if ctx.is_focused() => match &key_event.key {
+                Key::Character(s) => {
+                    if VALID_INPUT_CHARS.contains(s) {
+                        data.current_input.push_str(&s);
                     }
                 }
+                Key::Backspace => {
+                    let _ = data.current_input.pop();
+                }
+                Key::ArrowUp => {
+                    let history_len = data.history.len();
+                    if data.steps_back_in_history < history_len {
+                        if data.steps_back_in_history == 0 {
+                            data.stored_input = data.current_input.clone();
+                        }
+                        data.steps_back_in_history += 1;
+                        data.current_input = data.history[history_len - data.steps_back_in_history].0.clone();
+                    }
+                }
+                Key::ArrowDown => {
+                    if data.steps_back_in_history > 0 {
+                        data.steps_back_in_history -= 1;
+                        data.current_input = if data.steps_back_in_history == 0 {
+                            data.stored_input.clone()
+                        } else {
+                            data.history[data.history.len() - data.steps_back_in_history].0.clone()
+                        }
+                    }
+                }
+                Key::Enter => data.roll(),
+                _ => (),
             }
             _ => (),
         }
@@ -113,7 +125,7 @@ impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for KeyboardListen
 }
 
 #[derive(Debug)]
-struct FormatValidationError {}
+struct FormatValidationError;
 
 impl std::fmt::Display for FormatValidationError {
     // Ugly hack; build a real implementation.
@@ -128,7 +140,7 @@ impl Error for FormatValidationError {
     }
 }
 
-struct DiceTextFormatter {}
+struct DiceTextFormatter;
 
 impl Formatter<String> for DiceTextFormatter {
     fn format(&self, value: &String) -> String {
@@ -152,7 +164,7 @@ impl Formatter<String> for DiceTextFormatter {
 //////////////////////
 
 fn build_current_input_display() -> impl Widget<DiceCalculator> {
-    Label::<DiceCalculator>::dynamic(|calc, _| if calc.current_input.is_empty() { String::from("Roll text") } else { String::from(&calc.current_input) })
+    Label::<DiceCalculator>::dynamic(|calc, _env| if calc.current_input.is_empty() { String::from("Roll text") } else { String::from(&calc.current_input) })
 }
 
 fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
@@ -164,7 +176,7 @@ fn build_main_column() -> impl Widget<DiceCalculator> {
 }
 
 fn build_latest_output_display() -> impl Widget<DiceCalculator> {
-    Label::<DiceCalculator>::dynamic(|calc, _| match calc.history.last() {
+    Label::<DiceCalculator>::dynamic(|calc, _env| match calc.history.last() {
         None => String::new(),
         Some(roll_result) => match &roll_result.1 {
             Err(_) => String::from("ERROR"),
@@ -203,13 +215,22 @@ fn build_shortcut_creation_interface() -> impl Widget<DiceCalculator> {
 }
 
 fn build_shortcut_list() -> impl Widget<DiceCalculator> {
-    Label::<DiceCalculator>::dynamic(|calc, _| {
-        let mut list_as_text = String::new();
-        for shortcut in calc.shortcuts.iter().rev() {
-            list_as_text.push_str(&format!("{}\n{}\n[Roll Placeholder]\n[Delete Placeholder]\n\n", shortcut.name, shortcut.roll));
-        }
-        list_as_text
-    })
+    List::new(|| {
+        Flex::column()
+            .with_child(Label::<RollShortcut>::dynamic(|shortcut, _env| format!("{}\n{}", shortcut.name, shortcut.roll)))
+            .with_child(Flex::row()
+                .with_child(Button::new("Roll")
+                    .on_click(|ctx, shortcut: &mut RollShortcut, _env| {
+                        ctx.submit_command(Command::new(Selector::new("ShortcutRoll"), shortcut.clone(), Target::Global))
+                    })
+                )
+                .with_child(Button::new("Delete")
+                    .on_click(|ctx, shortcut: &mut RollShortcut, _env| {
+                        ctx.submit_command(Command::new(Selector::new("ShortcutDelete"), shortcut.clone(), Target::Global))
+                    })
+                )
+            )
+    }).lens(DiceCalculator::shortcuts)
 }
 
 fn build_shortcuts_column() -> impl Widget<DiceCalculator> {
@@ -221,7 +242,7 @@ fn build_main_window() -> impl Widget<DiceCalculator> {
         .with_flex_child(Align::left(build_shortcuts_column()), 1.)
         .with_flex_child(Align::centered(build_main_column()), 1.)
         .with_flex_child(Align::right(build_history_column()), 1.)
-        .controller(KeyboardListener {})
+        .controller(DiceCalcEventHandler {})
 }
 
 fn build_menu<T: Data>() -> MenuDesc<T> {

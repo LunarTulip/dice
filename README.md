@@ -16,6 +16,8 @@ The central intended selling points for the program's release are:
 - Improve whitespace handling so as to avoid the current lossiness
 - Figure out an elegant way to handle verbose display of nested dice rolls. (See, for example, `2d3d4`. Rendering as [2, 1]d4 loses something; so does rendering as [4, 2, 4].)
 - Add support for multiple inputs in a single CLI run, via `cat` or suchlike
+- Allow pressing enter to work in place of button-pressing for shortcut-creation
+- Allow reordering shortcuts after their creation
 
 ### Debug
 
