@@ -8,8 +8,8 @@ use druid::widget::{Align, Button, Controller, Flex, Label, TextBox, ValueTextBo
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
 use fluorite::format_string_with_results;
 use fluorite::parse::{clean_input, parse_input, RollInformation, VALID_INPUT_CHARS};
-use std::sync::Arc;
 use std::error::Error;
+use std::sync::Arc;
 
 /////////////////
 //   Structs   //
@@ -70,50 +70,53 @@ impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for KeyboardListen
         match event {
             Event::WindowConnected => ctx.request_focus(),
             Event::MouseDown(_) => ctx.request_focus(),
-            Event::KeyDown(key_event) => if ctx.is_focused() {
-                match &key_event.key {
-                    Key::Character(s) => {
-                        if VALID_INPUT_CHARS.contains(s)  {
-                            data.current_input.push_str(&s);
-                        }
-                    }
-                    Key::Backspace => {
-                        let _ = data.current_input.pop();
-                    }
-                    Key::ArrowUp => {
-                        let history_len = data.history.len();
-                        if data.steps_back_in_history < history_len {
-                            if data.steps_back_in_history == 0 {
-                                data.stored_input = data.current_input.clone();
-                            }
-                            data.steps_back_in_history += 1;
-                            data.current_input = data.history[history_len - data.steps_back_in_history].0.clone();
-                        }
-                    }
-                    Key::ArrowDown => {
-                        if data.steps_back_in_history > 0 {
-                            data.steps_back_in_history -= 1;
-                            data.current_input = if data.steps_back_in_history == 0 {
-                                data.stored_input.clone()
-                            } else {
-                                data.history[data.history.len() - data.steps_back_in_history].0.clone()
+            Event::KeyDown(key_event) => {
+                if ctx.is_focused() {
+                    match &key_event.key {
+                        Key::Character(s) => {
+                            if VALID_INPUT_CHARS.contains(s) {
+                                data.current_input.push_str(&s);
                             }
                         }
+                        Key::Backspace => {
+                            let _ = data.current_input.pop();
+                        }
+                        Key::ArrowUp => {
+                            let history_len = data.history.len();
+                            if data.steps_back_in_history < history_len {
+                                if data.steps_back_in_history == 0 {
+                                    data.stored_input = data.current_input.clone();
+                                }
+                                data.steps_back_in_history += 1;
+                                data.current_input = data.history[history_len - data.steps_back_in_history].0.clone();
+                            }
+                        }
+                        Key::ArrowDown => {
+                            if data.steps_back_in_history > 0 {
+                                data.steps_back_in_history -= 1;
+                                data.current_input = if data.steps_back_in_history == 0 {
+                                    data.stored_input.clone()
+                                } else {
+                                    data.history[data.history.len() - data.steps_back_in_history].0.clone()
+                                }
+                            }
+                        }
+                        Key::Enter => data.roll(),
+                        _ => (),
                     }
-                    Key::Enter => data.roll(),
-                    _ => (),
                 }
-            },
-            _ => ()
+            }
+            _ => (),
         }
         child.event(ctx, event, data, env);
     }
 }
 
 #[derive(Debug)]
-struct FormatValidationError{}
+struct FormatValidationError {}
 
-impl std::fmt::Display for FormatValidationError { // Ugly hack; build a real implementation.
+impl std::fmt::Display for FormatValidationError {
+    // Ugly hack; build a real implementation.
     fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ok(())
     }
@@ -194,20 +197,9 @@ fn build_history_column() -> impl Widget<DiceCalculator> {
 
 fn build_shortcut_creation_interface() -> impl Widget<DiceCalculator> {
     Flex::column()
-        .with_flex_child(TextBox::new()
-            .with_placeholder("Name")
-            .lens(DiceCalculator::new_shortcut_name),
-            1.)
-        .with_flex_child(ValueTextBox::new(
-            TextBox::new()
-                .with_placeholder("Roll Text"),
-            DiceTextFormatter {}
-        )
-            .lens(DiceCalculator::new_shortcut_text),
-            1.)
-        .with_flex_child(Button::new("Create Shortcut")
-            .on_click(DiceCalculator::add_shortcut)
-        , 1.)
+        .with_flex_child(TextBox::new().with_placeholder("Name").lens(DiceCalculator::new_shortcut_name), 1.)
+        .with_flex_child(ValueTextBox::new(TextBox::new().with_placeholder("Roll Text"), DiceTextFormatter {}).lens(DiceCalculator::new_shortcut_text), 1.)
+        .with_flex_child(Button::new("Create Shortcut").on_click(DiceCalculator::add_shortcut), 1.)
 }
 
 fn build_shortcut_list() -> impl Widget<DiceCalculator> {
@@ -221,9 +213,7 @@ fn build_shortcut_list() -> impl Widget<DiceCalculator> {
 }
 
 fn build_shortcuts_column() -> impl Widget<DiceCalculator> {
-    Flex::column()
-        .with_flex_child(build_shortcut_creation_interface(), 1.)
-        .with_flex_child(build_shortcut_list(), 1.)
+    Flex::column().with_flex_child(build_shortcut_creation_interface(), 1.).with_flex_child(build_shortcut_list(), 1.)
 }
 
 fn build_main_window() -> impl Widget<DiceCalculator> {
