@@ -27,8 +27,9 @@ The central intended selling points for the program's release are:
 - Allow reordering shortcuts after their creation
 - Un-placehold the currently-placeholder calculator buttons
 - Figure out text-wrapping for large inputs/outputs
-- Provide feedback on shortcut-creation failure
+- Provide feedback on shortcut-creation failure (and also for roll errors in a non-history-clogging way, while I'm at it)
 - Get the interface flexing where it should and inflexing where it should, rather than being a Mess in its current manner
+- Allow saving of shortcuts and history between sessions
 
 ### Debug
 

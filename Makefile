@@ -1,4 +1,4 @@
-all: /target/debug/fluorite.exe
+all: /target/debug/fluorite.exe /target/debug/fluorite-gui.exe
 
 gui: /target/debug/fluorite-gui.exe
 	./target/debug/fluorite-gui.exe

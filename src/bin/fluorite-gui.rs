@@ -1,10 +1,11 @@
 #![windows_subsystem = "windows"]
 
+use druid::commands::QUIT_APP;
 use druid::keyboard_types::Key;
 use druid::text::format::{Formatter, Validation, ValidationError};
 use druid::text::selection::Selection;
 use druid::widget::prelude::*;
-use druid::widget::{Align, Button, Controller, Flex, Label, List, Scroll, SizedBox, TextBox, ValueTextBox};
+use druid::widget::{Align, Button, Controller, Flex, Label, LineBreaking, List, Scroll, SizedBox, Split, TextBox, ValueTextBox};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
 use fluorite::format_string_with_results;
 use fluorite::parse::{clean_input, parse_input, RollInformation, VALID_INPUT_CHARS};
@@ -78,10 +79,12 @@ impl DiceCalculator {
         }
     }
     fn roll(&mut self) {
-        Arc::make_mut(&mut self.history).push((self.current_input.clone(), parse_input(&self.current_input)));
-        self.current_input = String::new();
-        self.stored_input = String::new();
-        self.steps_back_in_history = 0;
+        if !self.current_input.is_empty() {
+            Arc::make_mut(&mut self.history).push((self.current_input.clone(), parse_input(&self.current_input)));
+            self.current_input = String::new();
+            self.stored_input = String::new();
+            self.steps_back_in_history = 0;
+        }
     }
     fn roll_from_shortcut(&mut self, shortcut: RollShortcut) {
         Arc::make_mut(&mut self.history).push((shortcut.roll.clone(), parse_input(&shortcut.roll)));
@@ -231,13 +234,14 @@ fn build_calc_button(button: CalcButton, label: &str) -> impl Widget<DiceCalcula
             CalcButton::Backspace => {
                 let _ = data.current_input.pop();
             }
-            CalcButton::Roll => data.roll(),
+            CalcButton::Roll => data.roll(), // TODO: ban empty rolls
             CalcButton::PlaceholderNotCurrentlyInUse => (),
         })
 }
 
 fn build_current_input_display() -> impl Widget<DiceCalculator> {
     Label::<DiceCalculator>::dynamic(|calc, _env| if calc.current_input.is_empty() { String::from("Roll text") } else { String::from(&calc.current_input) })
+        .with_text_size(50.)
 }
 
 fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
@@ -299,17 +303,19 @@ fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
 }
 
 fn build_main_column() -> impl Widget<DiceCalculator> {
-    Flex::column().with_flex_child(build_current_input_display(), 1.).with_flex_child(build_main_calculator_display(), 1.)
+    Split::rows(Align::right(build_current_input_display()), build_main_calculator_display())
+        .split_point(0.15)
+        .solid_bar(true)
 }
 
 fn build_latest_output_display() -> impl Widget<DiceCalculator> {
     Label::<DiceCalculator>::dynamic(|calc, _env| match calc.history.last() {
-        None => String::new(),
+        None => String::from("Result"),
         Some(roll_result) => match &roll_result.1 {
-            Err(_) => String::from("ERROR"),
+            Err(_) => String::from("Error"),
             Ok(info) => format!("{}", info.value),
         },
-    })
+    }).with_text_size(50.)
 }
 
 fn build_history_display() -> impl Widget<DiceCalculator> {
@@ -327,24 +333,28 @@ fn build_history_display() -> impl Widget<DiceCalculator> {
             }
         }
         history
-    })
+    }).with_line_break_mode(LineBreaking::WordWrap)
 }
 
 fn build_history_column() -> impl Widget<DiceCalculator> {
-    Flex::column().with_flex_child(build_latest_output_display(), 1.).with_flex_child(Scroll::new(build_history_display()), 1.)
+    Split::rows(Align::centered(build_latest_output_display()), Scroll::new(build_history_display()))
+        .split_point(0.15)
+        .solid_bar(true)
 }
 
 fn build_shortcut_creation_interface() -> impl Widget<DiceCalculator> {
     Flex::column()
-        .with_flex_child(TextBox::new().with_placeholder("Name").lens(DiceCalculator::new_shortcut_name), 1.)
-        .with_flex_child(ValueTextBox::new(TextBox::new().with_placeholder("Roll Text"), DiceTextFormatter {}).lens(DiceCalculator::new_shortcut_text), 1.)
-        .with_flex_child(Button::new("Create Shortcut").on_click(DiceCalculator::add_shortcut), 1.)
+        .with_child(TextBox::new().with_placeholder("Name").lens(DiceCalculator::new_shortcut_name))
+        .with_child(ValueTextBox::new(TextBox::new().with_placeholder("Roll Text"), DiceTextFormatter {}).lens(DiceCalculator::new_shortcut_text))
+        .with_child(Button::new("Create Shortcut").on_click(DiceCalculator::add_shortcut))
 }
 
 fn build_shortcut_list() -> impl Widget<DiceCalculator> {
     List::new(|| {
         Flex::column()
-            .with_child(Label::<RollShortcut>::dynamic(|shortcut, _env| format!("{}\n{}", shortcut.name, shortcut.roll)))
+            .with_child(Label::<RollShortcut>::dynamic(|shortcut, _env| format!("{}\n{}", shortcut.name, shortcut.roll))
+                .with_line_break_mode(LineBreaking::WordWrap)
+            )
             .with_child(
                 Flex::row()
                     .with_child(Button::new("Roll").on_click(|ctx, shortcut: &mut RollShortcut, _env| ctx.submit_command(Command::new(Selector::new("ShortcutRoll"), shortcut.clone(), Target::Global))))
@@ -355,27 +365,40 @@ fn build_shortcut_list() -> impl Widget<DiceCalculator> {
 }
 
 fn build_shortcuts_column() -> impl Widget<DiceCalculator> {
-    Flex::column().with_flex_child(build_shortcut_creation_interface(), 1.).with_flex_child(Scroll::new(build_shortcut_list()), 1.)
+    Split::rows(Align::centered(build_shortcut_creation_interface()), Scroll::new(Align::centered(build_shortcut_list())))
+        .split_point(0.15)
+        .solid_bar(true)
 }
 
 fn build_main_window() -> impl Widget<DiceCalculator> {
-    Flex::row()
-        .with_flex_child(Align::left(build_shortcuts_column()), 1.)
-        .with_child(Align::centered(build_main_column()))
-        .with_flex_child(Align::right(build_history_column()), 1.)
+    Split::columns(
+        Split::columns(
+            build_shortcuts_column(),
+            build_main_column(),
+        )
+            .split_point(0.33)
+            .solid_bar(true)
+            .draggable(true),
+        build_history_column(),
+    )
+        .split_point(0.75)
+        .solid_bar(true)
+        .draggable(true)
         .controller(DiceCalcEventHandler {})
 }
 
-fn build_menu<T: Data>() -> MenuDesc<T> {
-    let placeholder_command = Command::new(Selector::new("Placeholder"), (), Target::Global);
-    let placeholder_entry = MenuItem::new(LocalizedString::new("Placeholder"), placeholder_command);
-    let exit_command = Command::new(Selector::new("Exit"), (), Target::Global);
-    let exit_entry = MenuItem::new(LocalizedString::new("Exit"), exit_command);
+fn build_file_menu<T: Data>() -> MenuDesc<T> {
+    let exit = MenuItem::new(LocalizedString::new("Exit"), QUIT_APP);
 
-    MenuDesc::empty().append(placeholder_entry).append(exit_entry)
+    MenuDesc::new(LocalizedString::new("File")).append(exit)
+}
+
+fn build_menus<T: Data>() -> MenuDesc<T> {
+    MenuDesc::empty()
+        .append(build_file_menu())
 }
 
 fn main() {
-    let window = WindowDesc::new(build_main_window).title("Fluorite").menu(build_menu());
+    let window = WindowDesc::new(build_main_window).title("Fluorite").menu(build_menus());
     AppLauncher::with_window(window).launch(DiceCalculator::new()).unwrap();
 }
