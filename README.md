@@ -19,17 +19,15 @@ The central intended selling points for the program's release are:
 ### Functionality (CLI)
 
 - Allow more fine-tuned variation in output verbosity
-- Add support for multiple newline-separated inputs in a single run via stdin
 
 ### Functionality (GUI)
 
 - Allow pressing enter to work in place of button-pressing for shortcut-creation
 - Allow reordering shortcuts after their creation
-- Un-placehold the currently-placeholder calculator buttons
-- Figure out text-wrapping for large inputs/outputs
+- Figure out text-wrapping for large inputs/outputs (in place of the current sideways scrollbar / nothing)
 - Provide feedback on shortcut-creation failure (and also for roll errors in a non-history-clogging way, while I'm at it)
-- Get the interface flexing where it should and inflexing where it should, rather than being a Mess in its current manner
-- Allow saving of shortcuts and history between sessions
+- Prettify the interface
+- Allow non-default data folder path
 
 ### Debug
 

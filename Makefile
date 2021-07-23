@@ -1,5 +1,9 @@
 all: /target/debug/fluorite.exe /target/debug/fluorite-gui.exe
 
+release:
+	cargo build --release --bin fluorite
+	cargo build --release --bin fluorite-gui
+
 gui: /target/debug/fluorite-gui.exe
 	./target/debug/fluorite-gui.exe
 

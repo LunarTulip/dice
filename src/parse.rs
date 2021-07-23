@@ -3,6 +3,7 @@ use pest::Parser;
 use pest_derive::Parser;
 use rand::Rng;
 use rust_decimal::prelude::*;
+use serde::{Deserialize, Serialize};
 
 pub const VALID_INPUT_CHARS: &str = "0123456789d.+-*/%() ";
 
@@ -21,7 +22,7 @@ enum Unop {
     Minus,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RollInformation {
     pub value: Decimal,
     pub processed_string: String,
