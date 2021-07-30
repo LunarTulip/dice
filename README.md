@@ -27,7 +27,6 @@ The central intended selling points for the program's release are:
 - Figure out text-wrapping for large inputs/outputs (in place of the current sideways scrollbar / nothing)
 - Provide feedback on shortcut-creation failure (and also for roll errors in a non-history-clogging way, while I'm at it)
 - Prettify the interface
-- Allow non-default data folder path
 
 ### Debug
 

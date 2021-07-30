@@ -147,7 +147,7 @@ impl DiceCalculator {
             let _ = history.drain(0..1);
         }
         if self.config.save_history {
-            save_history(self.clone());
+            save_history(&self);
         }
     }
     fn roll(&mut self) {
@@ -158,7 +158,7 @@ impl DiceCalculator {
             self.steps_back_in_history = 0;
         }
     }
-    fn roll_from_shortcut(&mut self, shortcut: RollShortcut) {
+    fn roll_from_shortcut(&mut self, shortcut: &RollShortcut) {
         self.add_to_history(shortcut.roll.clone(), parse_input(&shortcut.roll));
         if self.steps_back_in_history != 0 {
             self.current_input = self.stored_input.clone()
@@ -176,7 +176,7 @@ impl DiceCalculator {
             data.new_shortcut_text = String::new();
         }
         if data.config.save_shortcuts {
-            save_shortcuts(data.clone());
+            save_shortcuts(&data);
         }
     }
 }
@@ -222,13 +222,13 @@ impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for DiceCalcEventH
             },
             Event::Command(command) => {
                 if command.is::<RollShortcut>(Selector::new("ShortcutRoll")) {
-                    let shortcut = command.get_unchecked::<RollShortcut>(Selector::new("ShortcutRoll")).clone();
+                    let shortcut = &command.get_unchecked::<RollShortcut>(Selector::new("ShortcutRoll"));
                     data.roll_from_shortcut(shortcut);
                 } else if command.is::<RollShortcut>(Selector::new("ShortcutDelete")) {
                     let name_to_delete = command.get_unchecked::<RollShortcut>(Selector::new("ShortcutDelete")).name.clone();
                     Arc::make_mut(&mut data.shortcuts).retain(|shortcut| shortcut.name != name_to_delete);
                     if data.config.save_shortcuts {
-                        save_shortcuts(data.clone());
+                        save_shortcuts(&data);
                     }
                 }
             }
@@ -313,22 +313,21 @@ fn load_shortcuts() -> Arc<Vec<RollShortcut>> {
     }
 }
 
-fn save_config(calc: DiceCalculator) {
+fn save_config(calc: &DiceCalculator) {
     ensure_data_dir_exists();
     let config_as_json = serde_json::to_string(&calc.config).unwrap();
     write(&*CONFIG_PATH, config_as_json).unwrap();
 }
 
-fn save_history(calc: DiceCalculator) {
+fn save_history(calc: &DiceCalculator) {
     ensure_data_dir_exists();
     let history_as_json = serde_json::to_string(&calc.history).unwrap();
     write(&*HISTORY_PATH, history_as_json).unwrap();
 }
 
-fn save_shortcuts(calc: DiceCalculator) {
+fn save_shortcuts(calc: &DiceCalculator) {
     ensure_data_dir_exists();
     let shortcuts_as_json = serde_json::to_string(&calc.shortcuts).unwrap();
-    println!("{:?}", *SHORTCUTS_PATH);
     write(&*SHORTCUTS_PATH, shortcuts_as_json).unwrap();
 }
 
@@ -539,6 +538,7 @@ fn main() {
 
     let config = load_config();
     let calculator = DiceCalculator::new(config);
+    save_config(&calculator);
 
     let window = WindowDesc::new(build_main_window).title("Fluorite").menu(build_menus());
 
