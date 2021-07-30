@@ -9,10 +9,45 @@ use druid::widget::{Align, Button, Controller, Flex, Label, LineBreaking, List, 
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
 use fluorite::format_string_with_results;
 use fluorite::parse::{clean_input, parse_input, RollInformation, VALID_INPUT_CHARS};
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use std::fs::{read_to_string, write};
+use std::env::current_exe;
+use std::fs::{create_dir_all, read_to_string, write};
+use std::path::PathBuf;
 use std::sync::Arc;
+
+////////////////
+//   Consts   //
+////////////////
+
+lazy_static! {
+    static ref DATA_DIR: PathBuf = {
+        let mut path = current_exe().unwrap(); // Replace with real error-handling
+        path.pop();
+        path.push("fluorite_data");
+
+        path
+    };
+    static ref CONFIG_PATH: PathBuf = {
+        let mut path = DATA_DIR.clone();
+        path.push("config.json");
+
+        path
+    };
+    static ref HISTORY_PATH: PathBuf = {
+        let mut path = DATA_DIR.clone();
+        path.push("history.json");
+
+        path
+    };
+    static ref SHORTCUTS_PATH: PathBuf = {
+        let mut path = DATA_DIR.clone();
+        path.push("shortcuts.json");
+
+        path
+    };
+}
 
 /////////////////
 //   Structs   //
@@ -21,16 +56,16 @@ use std::sync::Arc;
 #[derive(Clone, Data, Deserialize, Serialize)]
 struct DiceCalculatorConfig {
     max_history_entries: u64,
-    history_filename: Option<String>,
-    shortcuts_filename: Option<String>,
+    save_history: bool,
+    save_shortcuts: bool,
 }
 
 impl DiceCalculatorConfig {
     fn new() -> DiceCalculatorConfig {
         DiceCalculatorConfig {
             max_history_entries: 100,
-            history_filename: None,
-            shortcuts_filename: None,
+            save_history: true,
+            save_shortcuts: true,
         }
     }
 }
@@ -92,25 +127,17 @@ impl DiceCalculator {
             config: config.clone(),
             current_input: String::new(),
             stored_input: String::new(),
-            history: match config.history_filename {
-                Some(filename) => load_history(&filename),
-                None => Arc::new(Vec::new()),
+            history: match config.save_history {
+                true => load_history(),
+                false => Arc::new(Vec::new()),
             },
             steps_back_in_history: 0,
-            shortcuts: match config.shortcuts_filename {
-                Some(filename) => load_shortcuts(&filename),
-                None => Arc::new(Vec::new()),
+            shortcuts: match config.save_history {
+                true => load_shortcuts(),
+                false => Arc::new(Vec::new()),
             },
             new_shortcut_name: String::new(),
             new_shortcut_text: String::new(),
-        }
-    }
-    fn save(&mut self) {
-        if self.config.history_filename.is_some() {
-            save_history(self.clone(), &self.config.history_filename.clone().unwrap());
-        }
-        if self.config.shortcuts_filename.is_some() {
-            save_shortcuts(self.clone(), &self.config.shortcuts_filename.clone().unwrap());
         }
     }
     fn add_to_history(&mut self, input: String, output: Result<RollInformation, String>) {
@@ -119,6 +146,9 @@ impl DiceCalculator {
         while history.len() as u64 > self.config.max_history_entries {
             let _ = history.drain(0..1);
         }
+        if self.config.save_history {
+            save_history(self.clone());
+        }
     }
     fn roll(&mut self) {
         if !self.current_input.is_empty() {
@@ -126,7 +156,6 @@ impl DiceCalculator {
             self.current_input = String::new();
             self.stored_input = String::new();
             self.steps_back_in_history = 0;
-            self.save();
         }
     }
     fn roll_from_shortcut(&mut self, shortcut: RollShortcut) {
@@ -135,7 +164,6 @@ impl DiceCalculator {
             self.current_input = self.stored_input.clone()
         }
         self.steps_back_in_history = 0;
-        self.save();
     }
     fn add_shortcut(_ctx: &mut EventCtx, data: &mut Self, _env: &Env) {
         let new_shortcut = RollShortcut {
@@ -147,7 +175,9 @@ impl DiceCalculator {
             data.new_shortcut_name = String::new();
             data.new_shortcut_text = String::new();
         }
-        data.save();
+        if data.config.save_shortcuts {
+            save_shortcuts(data.clone());
+        }
     }
 }
 
@@ -197,7 +227,9 @@ impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for DiceCalcEventH
                 } else if command.is::<RollShortcut>(Selector::new("ShortcutDelete")) {
                     let name_to_delete = command.get_unchecked::<RollShortcut>(Selector::new("ShortcutDelete")).name.clone();
                     Arc::make_mut(&mut data.shortcuts).retain(|shortcut| shortcut.name != name_to_delete);
-                    data.save();
+                    if data.config.save_shortcuts {
+                        save_shortcuts(data.clone());
+                    }
                 }
             }
             _ => (),
@@ -245,8 +277,14 @@ impl Formatter<String> for DiceTextFormatter {
 //   Helper Functions   //
 //////////////////////////
 
-fn load_config(filename: &str) -> DiceCalculatorConfig {
-    match read_to_string(filename) {
+fn ensure_data_dir_exists() {
+    if !DATA_DIR.as_path().exists() {
+        create_dir_all(&*DATA_DIR).unwrap()
+    }
+}
+
+fn load_config() -> DiceCalculatorConfig {
+    match read_to_string(&*CONFIG_PATH) {
         Ok(config_as_json) => match serde_json::from_str(&config_as_json) {
             Ok(config) => config,
             Err(_) => DiceCalculatorConfig::new()
@@ -255,18 +293,8 @@ fn load_config(filename: &str) -> DiceCalculatorConfig {
     }
 }
 
-fn load_shortcuts(filename: &str) -> Arc<Vec<RollShortcut>> {
-    match read_to_string(filename) {
-        Ok(shortcuts_as_json) => match serde_json::from_str(&shortcuts_as_json) {
-            Ok(shortcuts) => shortcuts,
-            Err(_) => Arc::new(Vec::new()),
-        }
-        Err(_) => Arc::new(Vec::new())
-    }
-}
-
-fn load_history(filename: &str) -> Arc<Vec<(String, Result<RollInformation, String>)>> {
-    match read_to_string(filename) {
+fn load_history() -> Arc<Vec<(String, Result<RollInformation, String>)>> {
+    match read_to_string(&*HISTORY_PATH) {
         Ok(history_as_json) => match serde_json::from_str(&history_as_json) {
             Ok(history) => history,
             Err(_) => Arc::new(Vec::new()),
@@ -275,14 +303,33 @@ fn load_history(filename: &str) -> Arc<Vec<(String, Result<RollInformation, Stri
     }
 }
 
-fn save_shortcuts(calc: DiceCalculator, filename: &str) {
-    let shortcuts_as_json = serde_json::to_string(&calc.shortcuts).unwrap();
-    write(filename, shortcuts_as_json).unwrap();
+fn load_shortcuts() -> Arc<Vec<RollShortcut>> {
+    match read_to_string(&*SHORTCUTS_PATH) {
+        Ok(shortcuts_as_json) => match serde_json::from_str(&shortcuts_as_json) {
+            Ok(shortcuts) => shortcuts,
+            Err(_) => Arc::new(Vec::new()),
+        }
+        Err(_) => Arc::new(Vec::new())
+    }
 }
 
-fn save_history(calc: DiceCalculator, filename: &str) {
+fn save_config(calc: DiceCalculator) {
+    ensure_data_dir_exists();
+    let config_as_json = serde_json::to_string(&calc.config).unwrap();
+    write(&*CONFIG_PATH, config_as_json).unwrap();
+}
+
+fn save_history(calc: DiceCalculator) {
+    ensure_data_dir_exists();
     let history_as_json = serde_json::to_string(&calc.history).unwrap();
-    write(filename, history_as_json).unwrap();
+    write(&*HISTORY_PATH, history_as_json).unwrap();
+}
+
+fn save_shortcuts(calc: DiceCalculator) {
+    ensure_data_dir_exists();
+    let shortcuts_as_json = serde_json::to_string(&calc.shortcuts).unwrap();
+    println!("{:?}", *SHORTCUTS_PATH);
+    write(&*SHORTCUTS_PATH, shortcuts_as_json).unwrap();
 }
 
 //////////////////////
@@ -489,7 +536,8 @@ fn build_menus<T: Data>() -> MenuDesc<T> {
 }
 
 fn main() {
-    let config = load_config("fluorite_data/config.json"); // Static placeholder name; figure out better implementation
+
+    let config = load_config();
     let calculator = DiceCalculator::new(config);
 
     let window = WindowDesc::new(build_main_window).title("Fluorite").menu(build_menus());
