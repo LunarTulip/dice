@@ -7,12 +7,11 @@ use druid::text::selection::Selection;
 use druid::widget::prelude::*;
 use druid::widget::{Align, Button, Controller, Flex, Label, LineBreaking, List, Scroll, SizedBox, Split, TextBox, ValueTextBox};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
-use fluorite::format_string_with_results;
 use fluorite::parse::{clean_input, parse_input, RollInformation, VALID_INPUT_CHARS};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::env::current_exe;
+use std::error::Error;
 use std::fs::{create_dir_all, read_to_string, write};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -287,9 +286,9 @@ fn load_config() -> DiceCalculatorConfig {
     match read_to_string(&*CONFIG_PATH) {
         Ok(config_as_json) => match serde_json::from_str(&config_as_json) {
             Ok(config) => config,
-            Err(_) => DiceCalculatorConfig::new()
-        }
-        Err(_) => DiceCalculatorConfig::new()
+            Err(_) => DiceCalculatorConfig::new(),
+        },
+        Err(_) => DiceCalculatorConfig::new(),
     }
 }
 
@@ -298,8 +297,8 @@ fn load_history() -> Arc<Vec<(String, Result<RollInformation, String>)>> {
         Ok(history_as_json) => match serde_json::from_str(&history_as_json) {
             Ok(history) => history,
             Err(_) => Arc::new(Vec::new()),
-        }
-        Err(_) => Arc::new(Vec::new())
+        },
+        Err(_) => Arc::new(Vec::new()),
     }
 }
 
@@ -308,8 +307,8 @@ fn load_shortcuts() -> Arc<Vec<RollShortcut>> {
         Ok(shortcuts_as_json) => match serde_json::from_str(&shortcuts_as_json) {
             Ok(shortcuts) => shortcuts,
             Err(_) => Arc::new(Vec::new()),
-        }
-        Err(_) => Arc::new(Vec::new())
+        },
+        Err(_) => Arc::new(Vec::new()),
     }
 }
 
@@ -376,8 +375,7 @@ fn build_calc_button(button: CalcButton, label: &str) -> impl Widget<DiceCalcula
 }
 
 fn build_current_input_display() -> impl Widget<DiceCalculator> {
-    Label::<DiceCalculator>::dynamic(|calc, _env| if calc.current_input.is_empty() { String::from("Roll text") } else { String::from(&calc.current_input) })
-        .with_text_size(50.)
+    Label::<DiceCalculator>::dynamic(|calc, _env| if calc.current_input.is_empty() { String::from("Roll text") } else { String::from(&calc.current_input) }).with_text_size(50.)
 }
 
 fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
@@ -439,9 +437,7 @@ fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
 }
 
 fn build_main_column() -> impl Widget<DiceCalculator> {
-    Split::rows(Align::right(build_current_input_display()), build_main_calculator_display())
-        .split_point(0.15)
-        .solid_bar(true)
+    Split::rows(Align::right(build_current_input_display()), build_main_calculator_display()).split_point(0.15).solid_bar(true)
 }
 
 fn build_latest_output_display() -> impl Widget<DiceCalculator> {
@@ -451,7 +447,8 @@ fn build_latest_output_display() -> impl Widget<DiceCalculator> {
             Err(_) => String::from("Error"),
             Ok(info) => format!("{}", info.value),
         },
-    }).with_text_size(50.)
+    })
+    .with_text_size(50.)
 }
 
 fn build_history_display() -> impl Widget<DiceCalculator> {
@@ -460,22 +457,16 @@ fn build_history_display() -> impl Widget<DiceCalculator> {
         for roll_result in calc.history.iter().rev() {
             match roll_result {
                 (input, Err(e)) => history.push_str(&format!("Input: {}\nError: {}\n\n", input, e)),
-                (input, Ok(info)) => history.push_str(&format!(
-                    "Input: {}\nRolled: {}\nResult: {}\n\n",
-                    input,
-                    format_string_with_results(&info.processed_string, info.rolls.clone()),
-                    info.value
-                )),
+                (input, Ok(info)) => history.push_str(&format!("Input: {}\nRolled: {}\nResult: {}\n\n", input, info.processed_string, info.value)),
             }
         }
         history
-    }).with_line_break_mode(LineBreaking::WordWrap)
+    })
+    .with_line_break_mode(LineBreaking::WordWrap)
 }
 
 fn build_history_column() -> impl Widget<DiceCalculator> {
-    Split::rows(Align::centered(build_latest_output_display()), Scroll::new(build_history_display()))
-        .split_point(0.15)
-        .solid_bar(true)
+    Split::rows(Align::centered(build_latest_output_display()), Scroll::new(build_history_display())).split_point(0.15).solid_bar(true)
 }
 
 fn build_shortcut_creation_interface() -> impl Widget<DiceCalculator> {
@@ -488,9 +479,7 @@ fn build_shortcut_creation_interface() -> impl Widget<DiceCalculator> {
 fn build_shortcut_list() -> impl Widget<DiceCalculator> {
     List::new(|| {
         Flex::column()
-            .with_child(Label::<RollShortcut>::dynamic(|shortcut, _env| format!("{}\n{}", shortcut.name, shortcut.roll))
-                .with_line_break_mode(LineBreaking::WordWrap)
-            )
+            .with_child(Label::<RollShortcut>::dynamic(|shortcut, _env| format!("{}\n{}", shortcut.name, shortcut.roll)).with_line_break_mode(LineBreaking::WordWrap))
             .with_child(
                 Flex::row()
                     .with_child(Button::new("Roll").on_click(|ctx, shortcut: &mut RollShortcut, _env| ctx.submit_command(Command::new(Selector::new("ShortcutRoll"), shortcut.clone(), Target::Global))))
@@ -508,19 +497,13 @@ fn build_shortcuts_column() -> impl Widget<DiceCalculator> {
 
 fn build_main_window() -> impl Widget<DiceCalculator> {
     Split::columns(
-        Split::columns(
-            build_shortcuts_column(),
-            build_main_column(),
-        )
-            .split_point(0.33)
-            .solid_bar(true)
-            .draggable(true),
+        Split::columns(build_shortcuts_column(), build_main_column()).split_point(0.33).solid_bar(true).draggable(true),
         build_history_column(),
     )
-        .split_point(0.75)
-        .solid_bar(true)
-        .draggable(true)
-        .controller(DiceCalcEventHandler {})
+    .split_point(0.75)
+    .solid_bar(true)
+    .draggable(true)
+    .controller(DiceCalcEventHandler {})
 }
 
 fn build_file_menu<T: Data>() -> MenuDesc<T> {
@@ -530,12 +513,10 @@ fn build_file_menu<T: Data>() -> MenuDesc<T> {
 }
 
 fn build_menus<T: Data>() -> MenuDesc<T> {
-    MenuDesc::empty()
-        .append(build_file_menu())
+    MenuDesc::empty().append(build_file_menu())
 }
 
 fn main() {
-
     let config = load_config();
     let calculator = DiceCalculator::new(config);
     save_config(&calculator);

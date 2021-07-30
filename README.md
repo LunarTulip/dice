@@ -12,13 +12,8 @@ The central intended selling points for the program's release are:
 
 ### Functionality (general)
 
-- Improve whitespace handling so as to avoid the current lossiness
 - Figure out an elegant way to handle verbose display of nested dice rolls. (See, for example, `2d3d4`. Rendering as [2, 1]d4 loses something; so does rendering as [4, 2, 4].)
 - Recognize preemptively and error when an input has a chance to try to roll a non-integer number of dice or a d[non-integer], rather than only when it actually does so
-
-### Functionality (CLI)
-
-- Allow more fine-tuned variation in output verbosity
 
 ### Functionality (GUI)
 
@@ -28,11 +23,6 @@ The central intended selling points for the program's release are:
 - Provide feedback on shortcut-creation failure (and also for roll errors in a non-history-clogging way, while I'm at it)
 - Prettify the interface
 
-### Debug
-
-- Correctly display results for nested rolls, which at present aren't just *inelegant* but instead straight-up *wrong*.
-
 ### Code Prettiness
-- Improve format functions in `lib.rs`
 - Maybe find a way to make the binop-sequence-handling code in `parse.rs` less repetitive?
 - Make the FormatValidationError type implementations not be the horrible hacks they currently are

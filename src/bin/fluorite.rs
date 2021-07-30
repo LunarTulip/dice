@@ -1,7 +1,6 @@
 use argh::FromArgs;
-use fluorite::parse::parse_input;
-use fluorite::{format_string_with_results, format_string_with_rolls};
-use std::io::{Read, stdin};
+use fluorite::parse::{clean_input, parse_input};
+use std::io::{stdin, Read};
 
 /// Roll dice via string input.
 #[derive(FromArgs)]
@@ -31,9 +30,9 @@ fn main() {
         match parse_input(&line) {
             Ok(results) => {
                 if args.verbose {
-                    println!("Original roll text: {}", format_string_with_rolls(&results.processed_string, results.original_roll_texts));
-                    println!("With results: {}", format_string_with_results(&results.processed_string, results.rolls));
-                    println!("Total: {}", results.value);
+                    println!("Input: {}", clean_input(line));
+                    println!("Rolled: {}", results.processed_string);
+                    println!("Result: {}", results.value);
                 } else {
                     println!("{}", results.value);
                 }
