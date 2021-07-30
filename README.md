@@ -1,12 +1,23 @@
 # Fluorite
 
-When finished, this program will be a highly versatile and powerful dice roller, inspired by the iOS app Dice Calculator. At the moment, its core functionality is in place, but it suffers from a dramatic lack of polish.
+When finished, this program will be a highly versatile and powerful dice roller, inspired by the iOS app Dice Calculator. At the moment, its core functionality is in place, although it remains dramatically unpolished.
 
 The central intended selling points for the program's release are:
 - Versatile user interface, available both in GUI and CLI formats
 - Fully offline; no need to rely on a Discord dice bot, or [that ancient Wizards dice roller](https://www.wizards.com/dnd/dice/dice.htm), or any similar bit of potentially-rottable online infrastructure
 - Multi-platform support, bringing Rust's ease of cross-compilation to bear
 - Calculator functionality, supporting a variety of operations freely mixable with die rolls
+
+## Build Dependencies
+
+Command-line tools:
+- `cargo`
+- `make`
+- `zip`
+- `jq`
+
+Rust targets:
+- `x86_64-pc-windows-msvc`
 
 ## TODOs
 
@@ -23,6 +34,6 @@ The central intended selling points for the program's release are:
 - Provide feedback on shortcut-creation failure (and also for roll errors in a non-history-clogging way, while I'm at it)
 - Prettify the interface
 
-### Code Prettiness
-- Maybe find a way to make the binop-sequence-handling code in `parse.rs` less repetitive?
-- Make the FormatValidationError type implementations not be the horrible hacks they currently are
+### Build
+
+- Set up a full cross-platform release pipeline
