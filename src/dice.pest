@@ -20,3 +20,7 @@ non_binop = { number | paren_block | paired_unop }
 
 legitimate_sequence = { non_binop ~ (binop ~ non_binop)* }
 full_expression = { SOI ~ legitimate_sequence ~ EOI }
+
+number_liberal = { number | "." }
+paren = { "(" | ")" }
+flat_sequence = { (number_liberal | binop | unop | paren)* }

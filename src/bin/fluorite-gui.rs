@@ -5,9 +5,9 @@ use druid::keyboard_types::Key;
 use druid::text::format::{Formatter, Validation, ValidationError};
 use druid::text::selection::Selection;
 use druid::widget::prelude::*;
-use druid::widget::{Align, Button, Controller, Flex, Label, LineBreaking, List, Scroll, SizedBox, Split, TextBox, ValueTextBox};
+use druid::widget::{Align, Button, Controller, Flex, Label, LineBreaking, List, Padding, Scroll, SizedBox, Split, TextBox, ValueTextBox};
 use druid::{AppLauncher, Command, Data, Lens, LocalizedString, MenuDesc, MenuItem, Selector, Target, Widget, WidgetExt, WindowDesc};
-use fluorite::parse::{clean_input, parse_input, RollInformation, VALID_INPUT_CHARS};
+use fluorite::parse::{clean_input, get_last_input, parse_input, RollInformation, Rule, VALID_INPUT_CHARS};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::env::current_exe;
@@ -190,7 +190,13 @@ impl<W: Widget<DiceCalculator>> Controller<DiceCalculator, W> for DiceCalcEventH
             Event::KeyDown(key_event) if ctx.is_focused() => match &key_event.key {
                 Key::Character(s) => {
                     if VALID_INPUT_CHARS.contains(s) {
-                        data.current_input.push_str(&s);
+                        if s == " " {
+                            if !data.current_input.is_empty() {
+                                data.current_input.push_str(&s)
+                            }
+                        } else {
+                            data.current_input.push_str(&s);
+                        }
                     }
                 }
                 Key::Backspace => {
@@ -350,12 +356,30 @@ fn build_calc_button(button: CalcButton, label: &str) -> impl Widget<DiceCalcula
             CalcButton::Eight => data.current_input.push('8'),
             CalcButton::Nine => data.current_input.push('9'),
             CalcButton::Decimal => data.current_input.push('.'),
-            CalcButton::D4 => (),  // TODO
-            CalcButton::D6 => (),  // TODO
-            CalcButton::D8 => (),  // TODO
-            CalcButton::D10 => (), // TODO
-            CalcButton::D12 => (), // TODO
-            CalcButton::D20 => (), // TODO
+            CalcButton::D4 => match get_last_input(&data.current_input).1 {
+                Some(rule) if rule == Rule::number => data.current_input.push_str("d4"),
+                _ => data.current_input.push_str("1d4"),
+            }
+            CalcButton::D6 => match get_last_input(&data.current_input).1 {
+                Some(rule) if rule == Rule::number => data.current_input.push_str("d6"),
+                _ => data.current_input.push_str("1d6"),
+            }
+            CalcButton::D8 => match get_last_input(&data.current_input).1 {
+                Some(rule) if rule == Rule::number => data.current_input.push_str("d8"),
+                _ => data.current_input.push_str("1d8"),
+            }
+            CalcButton::D10 => match get_last_input(&data.current_input).1 {
+                Some(rule) if rule == Rule::number => data.current_input.push_str("d10"),
+                _ => data.current_input.push_str("1d10"),
+            }
+            CalcButton::D12 => match get_last_input(&data.current_input).1 {
+                Some(rule) if rule == Rule::number => data.current_input.push_str("d12"),
+                _ => data.current_input.push_str("1d12"),
+            }
+            CalcButton::D20 => match get_last_input(&data.current_input).1 {
+                Some(rule) if rule == Rule::number => data.current_input.push_str("d20"),
+                _ => data.current_input.push_str("1d20"),
+            }
             CalcButton::Plus => data.current_input.push('+'),
             CalcButton::Minus => data.current_input.push('-'),
             CalcButton::Times => data.current_input.push('*'),
@@ -364,18 +388,29 @@ fn build_calc_button(button: CalcButton, label: &str) -> impl Widget<DiceCalcula
             CalcButton::Dice => data.current_input.push('d'),
             CalcButton::OpenParen => data.current_input.push('('),
             CalcButton::CloseParen => data.current_input.push(')'),
-            CalcButton::ClearEntry => (), // TODO
+            CalcButton::ClearEntry => {
+                let last_input = get_last_input(&data.current_input).0;
+                for _ in 0..last_input.len() {
+                    let _ = data.current_input.pop();
+                }
+            }
             CalcButton::Clear => data.current_input = String::new(),
             CalcButton::Backspace => {
                 let _ = data.current_input.pop();
             }
-            CalcButton::Roll => data.roll(), // TODO: ban empty rolls
+            CalcButton::Roll => if !data.current_input.is_empty() {
+                data.roll()
+            }
             CalcButton::PlaceholderNotCurrentlyInUse => (),
         })
 }
 
 fn build_current_input_display() -> impl Widget<DiceCalculator> {
-    Label::<DiceCalculator>::dynamic(|calc, _env| if calc.current_input.is_empty() { String::from("Roll text") } else { String::from(&calc.current_input) }).with_text_size(50.)
+    Padding::new((30., 0.),
+        Align::right(
+            Label::<DiceCalculator>::dynamic(|calc, _env| if calc.current_input.is_empty() { String::from("Roll text") } else { String::from(&calc.current_input) }).with_text_size(50.).with_line_break_mode(LineBreaking::Clip)
+        )
+    )
 }
 
 fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
@@ -428,7 +463,7 @@ fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
         .with_flex_child(
             Flex::row()
                 .with_child(build_calc_button(CalcButton::D4, "d4"))
-                .with_child(build_calc_button(CalcButton::PlaceholderNotCurrentlyInUse, "[Placeholder]"))
+                .with_child(build_calc_button(CalcButton::PlaceholderNotCurrentlyInUse, ""))
                 .with_child(build_calc_button(CalcButton::Zero, "0"))
                 .with_child(build_calc_button(CalcButton::Decimal, "."))
                 .with_child(build_calc_button(CalcButton::Roll, "[Roll]")),
@@ -437,67 +472,76 @@ fn build_main_calculator_display() -> impl Widget<DiceCalculator> {
 }
 
 fn build_main_column() -> impl Widget<DiceCalculator> {
-    Split::rows(Align::right(build_current_input_display()), build_main_calculator_display()).split_point(0.15).solid_bar(true)
+    Split::rows(build_current_input_display(), build_main_calculator_display()).split_point(0.15).solid_bar(true)
 }
 
 fn build_latest_output_display() -> impl Widget<DiceCalculator> {
-    Label::<DiceCalculator>::dynamic(|calc, _env| match calc.history.last() {
-        None => String::from("Result"),
-        Some(roll_result) => match &roll_result.1 {
-            Err(_) => String::from("Error"),
-            Ok(info) => format!("{}", info.value),
-        },
-    })
-    .with_text_size(50.)
+    Align::centered(
+        Label::<DiceCalculator>::dynamic(|calc, _env| match calc.history.last() {
+            None => String::from("Result"),
+            Some(roll_result) => match &roll_result.1 {
+                Err(_) => String::from("Error"),
+                Ok(info) => format!("{}", info.value),
+            },
+        })
+        .with_text_size(50.)
+    )
 }
 
 fn build_history_display() -> impl Widget<DiceCalculator> {
-    Label::<DiceCalculator>::dynamic(|calc, _| {
-        let mut history = String::new();
-        for roll_result in calc.history.iter().rev() {
-            match roll_result {
-                (input, Err(e)) => history.push_str(&format!("Input: {}\nError: {}\n\n", input, e)),
-                (input, Ok(info)) => history.push_str(&format!("Input: {}\nRolled: {}\nResult: {}\n\n", input, info.processed_string, info.value)),
+    Scroll::new(
+        Label::<DiceCalculator>::dynamic(|calc, _| {
+            let mut history = String::new();
+            for roll_result in calc.history.iter().rev() {
+                match roll_result {
+                    (input, Err(e)) => history.push_str(&format!("Input: {}\nError: {}\n\n", input, e)),
+                    (input, Ok(info)) => history.push_str(&format!("Input: {}\nRolled: {}\nResult: {}\n\n", input, info.processed_string, info.value)),
+                }
             }
-        }
-        history
-    })
-    .with_line_break_mode(LineBreaking::WordWrap)
+            history
+        })
+        .with_line_break_mode(LineBreaking::WordWrap)
+    ).vertical()
 }
 
 fn build_history_column() -> impl Widget<DiceCalculator> {
-    Split::rows(Align::centered(build_latest_output_display()), Scroll::new(build_history_display())).split_point(0.15).solid_bar(true)
+    Split::rows(build_latest_output_display(), build_history_display()).split_point(0.15).solid_bar(true)
 }
 
 fn build_shortcut_creation_interface() -> impl Widget<DiceCalculator> {
-    Flex::column()
-        .with_child(TextBox::new().with_placeholder("Name").lens(DiceCalculator::new_shortcut_name))
-        .with_child(ValueTextBox::new(TextBox::new().with_placeholder("Roll Text"), DiceTextFormatter {}).lens(DiceCalculator::new_shortcut_text))
-        .with_child(Button::new("Create Shortcut").on_click(DiceCalculator::add_shortcut))
+    Align::centered(
+        Flex::column()
+            .with_child(TextBox::new().with_placeholder("Name").lens(DiceCalculator::new_shortcut_name))
+            .with_child(ValueTextBox::new(TextBox::new().with_placeholder("Roll Text"), DiceTextFormatter {}).lens(DiceCalculator::new_shortcut_text))
+            .with_child(Button::new("Create Shortcut").on_click(DiceCalculator::add_shortcut))
+    )
 }
 
 fn build_shortcut_list() -> impl Widget<DiceCalculator> {
-    List::new(|| {
-        Flex::column()
-            .with_child(Label::<RollShortcut>::dynamic(|shortcut, _env| format!("{}\n{}", shortcut.name, shortcut.roll)).with_line_break_mode(LineBreaking::WordWrap))
-            .with_child(
-                Flex::row()
-                    .with_child(Button::new("Roll").on_click(|ctx, shortcut: &mut RollShortcut, _env| ctx.submit_command(Command::new(Selector::new("ShortcutRoll"), shortcut.clone(), Target::Global))))
-                    .with_child(Button::new("Delete").on_click(|ctx, shortcut: &mut RollShortcut, _env| ctx.submit_command(Command::new(Selector::new("ShortcutDelete"), shortcut.clone(), Target::Global)))),
-            )
-    })
-    .lens(DiceCalculator::shortcuts)
+    Align::centered(
+        Scroll::new(
+            List::new(|| {
+                Flex::column()
+                    .with_child(Label::<RollShortcut>::dynamic(|shortcut, _env| format!("{}\n{}", shortcut.name, shortcut.roll)).with_line_break_mode(LineBreaking::WordWrap))
+                    .with_child(
+                        Flex::row()
+                            .with_child(Button::new("Roll").on_click(|ctx, shortcut: &mut RollShortcut, _env| ctx.submit_command(Command::new(Selector::new("ShortcutRoll"), shortcut.clone(), Target::Global))))
+                            .with_child(Button::new("Delete").on_click(|ctx, shortcut: &mut RollShortcut, _env| ctx.submit_command(Command::new(Selector::new("ShortcutDelete"), shortcut.clone(), Target::Global)))),
+                    )
+            }).lens(DiceCalculator::shortcuts)
+        ).vertical()
+    )
 }
 
 fn build_shortcuts_column() -> impl Widget<DiceCalculator> {
-    Split::rows(Align::centered(build_shortcut_creation_interface()), Scroll::new(Align::centered(build_shortcut_list())))
+    Split::rows(build_shortcut_creation_interface(), build_shortcut_list())
         .split_point(0.15)
         .solid_bar(true)
 }
 
 fn build_main_window() -> impl Widget<DiceCalculator> {
     Split::columns(
-        Split::columns(build_shortcuts_column(), build_main_column()).split_point(0.33).solid_bar(true).draggable(true),
+        Split::columns(build_shortcuts_column(), build_main_column()).split_point(1./3.).solid_bar(true).draggable(true),
         build_history_column(),
     )
     .split_point(0.75)

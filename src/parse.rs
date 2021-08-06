@@ -239,9 +239,9 @@ pub fn clean_input(input: &str) -> String {
     clean
 }
 
-//////////////////////////
-//   Parser functions   //
-//////////////////////////
+/////////////////////
+//   Main Parser   //
+/////////////////////
 
 fn parse_number(number: Pair<Rule>) -> (Decimal, String) {
     assert_eq!(number.as_rule(), Rule::number, "Called parse_number on non-number.");
@@ -382,5 +382,38 @@ pub fn parse_input(input: &str) -> Result<RollInformation, String> {
     match DiceParser::parse(Rule::full_expression, &cleaned) {
         Ok(full_expression) => Ok(parse_full_expression(full_expression)?),
         Err(e) => Err(e.to_string()),
+    }
+}
+
+/////////////////////
+//   GUI Helpers   //
+/////////////////////
+
+pub fn get_last_input(input: &str) -> (String, Option<Rule>) {
+    let mut input_sequence = DiceParser::parse(Rule::flat_sequence, input).unwrap().next().unwrap().into_inner();
+
+    match input_sequence.next() {
+        None => return (String::new(), None),
+        Some(pair) => {
+            let mut latest_input = pair;
+            let mut next_input = input_sequence.next();
+            while next_input.is_some() { // Set latest_input to the final input in the sequence
+                latest_input = next_input.unwrap();
+                next_input = input_sequence.next();
+            }
+
+            match latest_input.as_rule() {
+                Rule::number_liberal => match latest_input.clone().into_inner().next() {
+                    None => (String::from(latest_input.as_str()), Some(latest_input.as_rule())),
+                    Some(number) => (String::from(number.as_str()), Some(number.as_rule())),
+                }
+                Rule::binop | Rule::unop => {
+                    let operator = latest_input.into_inner().next().unwrap();
+                    (String::from(operator.as_str()), Some(operator.as_rule()))
+                }
+                Rule::paren => (String::from(latest_input.as_str()), Some(latest_input.as_rule())),
+                _ => unreachable!("Flat sequence contains token other than number_liberal, binop, unop, or paren.")
+            }
+        }
     }
 }

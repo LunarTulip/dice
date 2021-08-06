@@ -1,6 +1,6 @@
 [package]
 name = "fluorite"
-version = "0.2.5"
+version = "0.2.6"
 authors = ["Alyssa Riceman <alyssariceman@gmail.com>"]
 edition = "2018"
 

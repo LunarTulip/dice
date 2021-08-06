@@ -5,10 +5,12 @@ When finished, this program will be a highly versatile and powerful dice roller,
 The central intended selling points for the program's release are:
 - Versatile user interface, available both in GUI and CLI formats
 - Fully offline; no need to rely on a Discord dice bot, or [that ancient Wizards dice roller](https://www.wizards.com/dnd/dice/dice.htm), or any similar bit of potentially-rottable online infrastructure
-- Multi-platform support, bringing Rust's ease of cross-compilation to bear
 - Calculator functionality, supporting a variety of operations freely mixable with die rolls
+- Multi-platform support
 
-## Build Dependencies
+At the moment, there's a functional build for 64-bit Windows; other targets are a work-in-progress.
+
+## Known Build Dependencies
 
 Command-line tools:
 - `cargo`
@@ -32,8 +34,9 @@ Rust targets:
 - Allow reordering shortcuts after their creation
 - Figure out text-wrapping for large inputs/outputs (in place of the current sideways scrollbar / nothing)
 - Provide feedback on shortcut-creation failure (and also for roll errors in a non-history-clogging way, while I'm at it)
+- Make the dice buttons a bit less dumb (see their current behavior when pressed repeatedly)
 - Prettify the interface
 
 ### Build
 
-- Set up a full cross-platform release pipeline
+- Set up a full cross-platform release pipeline, adding support for `i686-pc-windows-msvc`, `x86_64-unknown-linux-gnu`, and `x86_64-apple-darwin`
